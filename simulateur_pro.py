@@ -7,9 +7,15 @@ import numpy as np
 # 1. Configuration de la page professionnelle
 st.set_page_config(page_title="Simulateur Patrimonial Pro", page_icon="📈", layout="wide")
 
-# 2. Configuration IA (Clé écrite directement pour le test local)
-CLE_API_GEMINI = "AIzaSyVotreCleIci"  # <-- Collez votre vraie clé Google AI Studio entre les guillemets
-client_ia = genai.Client(api_key=CLE_API_GEMINI)
+# 2. Configuration IA Sécurisée (Plus de clé visible dans le code)
+try:
+    CLE_API = st.secrets["GEMINI_API_KEY"]
+    client_ia = genai.Client(api_key=CLE_API)
+except Exception as e:
+    st.error(f"Erreur d'initialisation : {e}")
+    st.stop()
+
+
 
 
 
