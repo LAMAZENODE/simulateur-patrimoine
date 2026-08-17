@@ -3,7 +3,7 @@ from google import genai
 import plotly.graph_objects as go
 import numpy as np
 from io import BytesIO
-import stripe
+import stripe 
 
 # Importations obligatoires pour le PDF ReportLab
 from reportlab.lib.pagesizes import letter
