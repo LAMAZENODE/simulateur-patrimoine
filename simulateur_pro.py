@@ -162,6 +162,7 @@ if "est_paye" not in st.session_state or not st.session_state["est_paye"]:
     st.stop() # Bloque la suite du code tant que le paiement n'est pas actif
  
 
+
 # 5. CODE DE L'APPLICATION (S'exécute uniquement si payé)
 st.title("🏢 Espace Premium : Votre Simulateur Patrimonial")
 st.markdown("Bienvenue dans votre espace sécurisé. Remplissez vos informations pour générer votre audit exclusif.")
@@ -181,54 +182,84 @@ with col_input2:
     taux_rendement = st.slider("📈 Objectif de Rendement Annuel Moyen (%)", min_value=1.0, max_value=12.0, value=4.0, step=0.5)
     horizon_temps = st.slider("⏳ Horizon de Projection (Années)", min_value=5, max_value=30, value=20, step=5)
 
-# --- ÉTAPE 2 : CALCULS ET GRAPHIQUE ---
-st.markdown("---")
-st.markdown("### 📊 2. Votre Projection Patrimoniale Personnalisée")
-
-# Calcul mathématique de base pour la projection
+# --- ÉTAPE 2 : CALCULS ET SIMULATION AVANCÉE ---
 annees = np.arange(0, horizon_temps + 1)
 patrimoine_initial = (patrimoine_immo + epargne_dispo) - dette_totale
 
-# Simulation d'une croissance composée simple
 valeurs_projection = []
-patrimoine_courant = patrimoine_initial
+interets_cumules = []
+patrimoine_courant = patrimonio_initial
+total_interets = 0
 
 for annee in annees:
     if annee == 0:
-        valeurs_projection.append(patrimoine_courant)
+        valeurs_projection.append(int(patrimoine_courant))
+        interets_cumules.append(0)
     else:
-        # On ajoute une épargne annuelle théorique basée sur les revenus (ex: 10%) + les intérêts
-        epargne_annuelle = revenus_annuels * 0.10
-        patrimoine_courant = (patrimoine_courant * (1 + taux_rendement / 100)) + epargne_annuelle
-        valeurs_projection.append(patrimoine_courant)
+        epargne_annuelle = revenus_annuels * 0.10  # Hypothèse : 10% d'effort d'épargne annuel
+        interet_annee = patrimoine_courant * (taux_rendement / 100)
+        total_interets += interet_annee
+        
+        patrimoine_courant = patrimoine_courant + interet_annee + epargne_annuelle
+        valeurs_projection.append(int(patrimoine_courant))
+        interets_cumules.append(int(total_interets))
 
-# Création du graphique Plotly Premium
-fig = go.Figure()
-fig.add_trace(go.Scatter(
-    x=annees, 
-    y=valeurs_projection, 
-    mode='lines+markers',
-    name='Patrimoine Net Estimé',
-    line=dict(color='#004B87', width=3),
-    marker=dict(size=6)
-))
+# --- ÉTAPE 3 : GRAPHIQUE ET TABLEAU COMPTABLE ---
+st.markdown("---")
+st.markdown("### 📊 2. Graphique d'Évolution & Tableau de Bord")
 
-fig.update_layout(
-    title=f"Évolution estimée de votre patrimoine net sur {horizon_temps} ans",
-    xaxis_title="Années",
-    yaxis_title="Valeur Net (€)",
-    template="plotly_white",
-    margin=dict(l=40, r=40, t=40, b=40)
-)
+tab_graph, tab_data = st.tabs(["📈 Graphique de Performance", "📋 Tableau des Chiffres"])
 
-st.plotly_chart(fig, use_container_width=True)
+with tab_graph:
+    # Création du graphique Plotly Premium avec un design institutionnel
+    fig = go.Figure()
+    
+    # Ligne principale du patrimoine net
+    fig.add_trace(go.Scatter(
+        x=annees, 
+        y=valeurs_projection, 
+        mode='lines+markers',
+        name='Patrimoine Net Estimé',
+        line=dict(color='#004B87', width=3.5),
+        marker=dict(size=6, color='#002D54')
+    ))
+    
+    # Courbe des intérêts générés (la valeur créée)
+    fig.add_trace(go.Scatter(
+        x=annees, 
+        y=interets_cumules, 
+        mode='lines',
+        name='Intérêts Capitalisés Cumulés',
+        line=dict(color='#00A86B', width=2, dash='dash'),
+    ))
 
-# --- ÉTAPE 3 : ANALYSE INTELLIGENTE ET GÉNÉRATION ---
+    fig.update_layout(
+        title=f"Évolution estimée de votre capital net sur {horizon_temps} ans",
+        xaxis_title="Années",
+        yaxis_title="Valeur (€)",
+        template="plotly_white",
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+with tab_data:
+    st.write("Retrouvez ici le détail exact de l'évolution de vos comptes ligne par ligne :")
+    
+    # Construction d'un tableau propre pour l'utilisateur
+    donnees_tableau = {
+        "Année": [f"Année {a}" for a in annees],
+        "Patrimoine Global (€)": [f"{v:,}".replace(",", " ") for v in valeurs_projection],
+        "Intérêts Cumulés (€)": [f"{i:,}".replace(",", " ") for i in interets_cumules]
+    }
+    st.table(donnees_tableau)
+
+# --- ÉTAPE 4 : ANALYSE INTELLIGENTE ET GÉNÉRATION DU RAPPORT ---
 st.markdown("---")
 st.markdown("### 🤖 3. Rapport d'Audit par Intelligence Artificielle")
 
 if st.button("🧠 Lancer l'Analyse IA & Créer le PDF Certifié", use_container_width=True):
-    with st.spinner("L'IA analyse vos chiffres et prépare vos recommandations fiscales..."):
+    with st.spinner("L'IA examine vos données et structure votre livrable officiel..."):
         
         # Construction du prompt pour Google Gemini
         prompt_ia = f"""
@@ -239,12 +270,12 @@ if st.button("🧠 Lancer l'Analyse IA & Créer le PDF Certifié", use_container
         - Dettes : {dette_totale} €
         - Objectif de rendement : {taux_rendement} %
         - Horizon de temps : {horizon_temps} ans
-        - Patrimoine net de départ : {patrimoine_initial} €
+        - Patrimoine net final estimé : {valeurs_projection[-1]} €
         
         Rédige un rapport structuré avec 3 sections claires :
-        1. Diagnostic précis de la situation actuelle (Forces et Risques).
+        1. Diagnostic précis de la situation actuelle (Forces, Risques et structure de la dette).
         2. 3 Stratégies d'optimisation fiscale et de rendement applicables immédiatement.
-        3. Plan d'action détaillé pas-à-pas pour atteindre l'objectif de {taux_rendement}%.
+        3. Plan d'action détaillé pas-à-pas pour sécuriser l'objectif de {valeurs_projection[-1]} € à terme.
         Sois professionnel, précis et percutant dans tes conseils.
         """
         
@@ -256,36 +287,42 @@ if st.button("🧠 Lancer l'Analyse IA & Créer le PDF Certifié", use_container
             )
             texte_rapport = response.text
             
-            # Affichage du rapport à l'écran
-            st.success("✅ Votre audit personnalisé est prêt !")
+            # Affichage immédiat à l'écran
+            st.success("✅ Votre audit personnalisé a été généré avec succès !")
             st.markdown(texte_rapport)
             
-            # --- ÉTAPE 4 : CRÉATION DU FICHIER PDF ---
+            # --- ÉTAPE 5 : CRÉATION DU RAPPORT PDF ENRICHI ---
             st.markdown("---")
             st.markdown("### 📥 4. Téléchargez votre Livrable Officiel")
             
-            # Génération du PDF en mémoire avec ReportLab
             buffer = BytesIO()
             doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
             story = []
             
             styles = getSampleStyleSheet()
-            style_titre = ParagraphStyle('TitrePDF', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#004B87'), spaceAfter=20)
-            style_texte = ParagraphStyle('TextePDF', parent=styles['Normal'], fontSize=11, leading=16, spaceAfter=12)
+            style_titre = ParagraphStyle('TitrePDF', parent=styles['Heading1'], fontSize=20, textColor=colors.HexColor('#004B87'), spaceAfter=15)
+            style_soustitre = ParagraphStyle('SousTitrePDF', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#002D54'), spaceAfter=10)
+            style_texte = ParagraphStyle('TextePDF', parent=styles['Normal'], fontSize=10, leading=15, spaceAfter=10)
             
-            # Contenu du PDF
+            # Structure visuelle du document PDF
             story.append(Paragraph("AUDIT PATRIMONIAL ET FINANCIER CERTIFIÉ", style_titre))
-            story.append(Paragraph(f"Généré exclusivement pour l'utilisateur - Horizon {horizon_temps} ans", style_texte))
+            story.append(Paragraph(f"Établi le : 2026 • Horizon de projection : {horizon_temps} ans", style_texte))
             story.append(Spacer(1, 15))
             
-            # Remplacement des sauts de ligne pour ReportLab
+            story.append(Paragraph("1. Résumé des Données Clés de l'Analyse", style_soustitre))
+            story.append(Paragraph(f"• Patrimoine initial net de dettes : {patrimoine_initial:,} €".replace(",", " "), style_texte))
+            story.append(Paragraph(f"• Objectif de performance configuré : {taux_rendement} % par an", style_texte))
+            story.append(Paragraph(f"• Estimation finale du patrimoine disponible : {valeurs_projection[-1]:,} €".replace(",", " "), style_texte))
+            story.append(Spacer(1, 15))
+            
+            story.append(Paragraph("2. Conclusions de l'Expertise IA", style_soustitre))
             texte_formate_pdf = texte_rapport.replace("\n", "<br/>")
             story.append(Paragraph(texte_formate_pdf, style_texte))
             
             doc.build(story)
             pdf_data = buffer.getvalue()
             
-            # Bouton de téléchargement
+            # Bouton de téléchargement final du fichier
             st.download_button(
                 label="📥 Télécharger mon rapport d'audit au format PDF",
                 data=pdf_data,
@@ -295,10 +332,5 @@ if st.button("🧠 Lancer l'Analyse IA & Créer le PDF Certifié", use_container
             )
             
         except Exception as e:
-            st.error(f"Une erreur est survenue lors de l'analyse IA : {e}")
-
-
-
-
-
+            st.error(f"Une erreur est survenue lors de l'analyse ou de la création du PDF : {e}")
 
