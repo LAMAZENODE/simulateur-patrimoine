@@ -75,7 +75,7 @@ elif "annule" in query_params:
 if "est_paye" not in st.session_state or not st.session_state["est_paye"]:
     
     # En-tête de confiance institutionnelle
-    col_logo, col_title = st.columns([1, 5])
+    col_logo, col_title = st.columns([1, 10])
     with col_logo:
         st.write("## 🛡️")
     with col_title:
@@ -115,26 +115,35 @@ if "est_paye" not in st.session_state or not st.session_state["est_paye"]:
             unsafe_allow_html=True
         )
         
+        st.write("") # Petit espace visuel
+        
         # Bouton d'action principal ultra-visible
         if st.button("🚀 Activer mon accès et lancer l'analyse", use_container_width=True):
             try:
                 url_actuelle = st.secrets.get("MON_URL_STREAMLIT", "https://streamlit.io")
                 
-                # Création de la page de paiement sécurisée Stripe Checkout
+                # CRÉATION DE LA SESSION : Mode 'payment' pour achat unique
                 session_checkout = stripe.checkout.Session.create(
                     payment_method_types=['card'],
                     line_items=[{
                         'price': STRIPE_PRICE_ID,
                         'quantity': 1,
                     }],
-                    mode='payment', # Remplacé par 'payment' s'il s'agit d'un achat unique de 49€ (ou 'subscription' si c'est récurrent)
+                    mode='payment',
                     success_url=f"{url_actuelle}?session_id={{CHECKOUT_SESSION_ID}}",
                     cancel_url=f"{url_actuelle}?annule=true",
                 )
                 
-                # Redirection vers l'espace Stripe sécurisé
-                st.markdown(f'<meta http-serif="refresh" content="0;URL=\'{session_checkout.url}\'" />', unsafe_allow_html=True)
-                st.info("🔄 Redirection sécurisée vers la plateforme Stripe...")
+                # Interface rassurante de redirection (Alignement corrigé ici)
+                st.success("✅ Lien de paiement sécurisé généré avec succès !")
+                
+                # Bouton officiel Streamlit cliquable
+                st.link_button(
+                    "👉 Cliquez ici pour ouvrir la page de paiement sécurisée Stripe", 
+                    session_checkout.url, 
+                    type="primary", 
+                    use_container_width=True
+                )
                 
             except Exception as e:
                 st.error(f"Impossible d'initier le paiement sécurisé : {e}")
@@ -151,11 +160,13 @@ if "est_paye" not in st.session_state or not st.session_state["est_paye"]:
         st.caption("⭐ *'L'outil IA pose des questions très pertinentes, le livrable PDF vaut largement le coût.'* — **Thomas R., Conseil en gestion**")
         
     st.stop() # Bloque la suite du code tant que le paiement n'est pas actif
+ 
 
 # 5. CODE DE L'APPLICATION (S'exécute uniquement si payé)
 st.title("🏢 Espace Premium : Configuration de votre Simulation")
 st.write("Félicitations, votre accès est validé. Vous pouvez dès maintenant configurer vos variables.")
-# Insérez ici le reste de votre logique métier (Inputs, Plotly, Gemini IA, ReportLab...)
+# Insérez ici le reste de votre logique métier (Inputs, Plotly, Gemini IA, ReportLab..
+
 
 
 
