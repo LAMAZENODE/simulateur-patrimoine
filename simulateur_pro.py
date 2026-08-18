@@ -163,9 +163,140 @@ if "est_paye" not in st.session_state or not st.session_state["est_paye"]:
  
 
 # 5. CODE DE L'APPLICATION (S'exécute uniquement si payé)
-st.title("🏢 Espace Premium : Configuration de votre Simulation")
-st.write("Félicitations, votre accès est validé. Vous pouvez dès maintenant configurer vos variables.")
-# Insérez ici le reste de votre logique métier (Inputs, Plotly, Gemini IA, ReportLab..
+st.title("🏢 Espace Premium : Votre Simulateur Patrimonial")
+st.markdown("Bienvenue dans votre espace sécurisé. Remplissez vos informations pour générer votre audit exclusif.")
+
+# --- ÉTAPE 1 : COLLECTE DES DONNÉES ---
+st.markdown("### 📝 1. Vos Informations Financières")
+
+col_input1, col_input2 = st.columns(2)
+
+with col_input1:
+    patrimoine_immo = st.number_input("🏠 Patrimoine Immobilier Global (€)", min_value=0, value=250000, step=10000)
+    epargne_dispo = st.number_input("💰 Épargne et Placements Financiers (€)", min_value=0, value=50000, step=5000)
+    revenus_annuels = st.number_input("💼 Revenus Annuels Nets du Foyer (€)", min_value=0, value=45000, step=2000)
+
+with col_input2:
+    dette_totale = st.number_input("📉 Dettes et Emprunts Restants (€)", min_value=0, value=120000, step=5000)
+    taux_rendement = st.slider("📈 Objectif de Rendement Annuel Moyen (%)", min_value=1.0, max_value=12.0, value=4.0, step=0.5)
+    horizon_temps = st.slider("⏳ Horizon de Projection (Années)", min_value=5, max_value=30, value=20, step=5)
+
+# --- ÉTAPE 2 : CALCULS ET GRAPHIQUE ---
+st.markdown("---")
+st.markdown("### 📊 2. Votre Projection Patrimoniale Personnalisée")
+
+# Calcul mathématique de base pour la projection
+annees = np.arange(0, horizon_temps + 1)
+patrimoine_initial = (patrimoine_immo + epargne_dispo) - dette_totale
+
+# Simulation d'une croissance composée simple
+valeurs_projection = []
+patrimoine_courant = patrimoine_initial
+
+for annee in annees:
+    if annee == 0:
+        valeurs_projection.append(patrimoine_courant)
+    else:
+        # On ajoute une épargne annuelle théorique basée sur les revenus (ex: 10%) + les intérêts
+        epargne_annuelle = revenus_annuels * 0.10
+        patrimoine_courant = (patrimoine_courant * (1 + taux_rendement / 100)) + epargne_annuelle
+        valeurs_projection.append(patrimoine_courant)
+
+# Création du graphique Plotly Premium
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=annees, 
+    y=valeurs_projection, 
+    mode='lines+markers',
+    name='Patrimoine Net Estimé',
+    line=dict(color='#004B87', width=3),
+    marker=dict(size=6)
+))
+
+fig.update_layout(
+    title=f"Évolution estimée de votre patrimoine net sur {horizon_temps} ans",
+    xaxis_title="Années",
+    yaxis_title="Valeur Net (€)",
+    template="plotly_white",
+    margin=dict(l=40, r=40, t=40, b=40)
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
+# --- ÉTAPE 3 : ANALYSE INTELLIGENTE ET GÉNÉRATION ---
+st.markdown("---")
+st.markdown("### 🤖 3. Rapport d'Audit par Intelligence Artificielle")
+
+if st.button("🧠 Lancer l'Analyse IA & Créer le PDF Certifié", use_container_width=True):
+    with st.spinner("L'IA analyse vos chiffres et prépare vos recommandations fiscales..."):
+        
+        # Construction du prompt pour Google Gemini
+        prompt_ia = f"""
+        En tant qu'expert en gestion de patrimoine haut de gamme, analyse la situation suivante :
+        - Patrimoine Immobilier : {patrimoine_immo} €
+        - Épargne : {epargne_dispo} €
+        - Revenus Annuels : {revenus_annuels} €
+        - Dettes : {dette_totale} €
+        - Objectif de rendement : {taux_rendement} %
+        - Horizon de temps : {horizon_temps} ans
+        - Patrimoine net de départ : {patrimoine_initial} €
+        
+        Rédige un rapport structuré avec 3 sections claires :
+        1. Diagnostic précis de la situation actuelle (Forces et Risques).
+        2. 3 Stratégies d'optimisation fiscale et de rendement applicables immédiatement.
+        3. Plan d'action détaillé pas-à-pas pour atteindre l'objectif de {taux_rendement}%.
+        Sois professionnel, précis et percutant dans tes conseils.
+        """
+        
+        try:
+            # Appel à l'API Gemini
+            response = client_ia.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt_ia
+            )
+            texte_rapport = response.text
+            
+            # Affichage du rapport à l'écran
+            st.success("✅ Votre audit personnalisé est prêt !")
+            st.markdown(texte_rapport)
+            
+            # --- ÉTAPE 4 : CRÉATION DU FICHIER PDF ---
+            st.markdown("---")
+            st.markdown("### 📥 4. Téléchargez votre Livrable Officiel")
+            
+            # Génération du PDF en mémoire avec ReportLab
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+            story = []
+            
+            styles = getSampleStyleSheet()
+            style_titre = ParagraphStyle('TitrePDF', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#004B87'), spaceAfter=20)
+            style_texte = ParagraphStyle('TextePDF', parent=styles['Normal'], fontSize=11, leading=16, spaceAfter=12)
+            
+            # Contenu du PDF
+            story.append(Paragraph("AUDIT PATRIMONIAL ET FINANCIER CERTIFIÉ", style_titre))
+            story.append(Paragraph(f"Généré exclusivement pour l'utilisateur - Horizon {horizon_temps} ans", style_texte))
+            story.append(Spacer(1, 15))
+            
+            # Remplacement des sauts de ligne pour ReportLab
+            texte_formate_pdf = texte_rapport.replace("\n", "<br/>")
+            story.append(Paragraph(texte_formate_pdf, style_texte))
+            
+            doc.build(story)
+            pdf_data = buffer.getvalue()
+            
+            # Bouton de téléchargement
+            st.download_button(
+                label="📥 Télécharger mon rapport d'audit au format PDF",
+                data=pdf_data,
+                file_name="Audit_Patrimonial_Premium.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+            
+        except Exception as e:
+            st.error(f"Une erreur est survenue lors de l'analyse IA : {e}")
+
 
 
 
