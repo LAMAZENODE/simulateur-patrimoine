@@ -161,14 +161,12 @@ if "est_paye" not in st.session_state or not st.session_state["est_paye"]:
         
     st.stop() # Bloque la suite du code tant que le paiement n'est pas actif
  
-
-
-# 5. CODE DE L'APPLICATION (S'exécute uniquement si payé)
-st.title("🏢 Espace Premium : Votre Simulateur Patrimonial")
+# 5. CODE DE L'APPLICATION (S'exécutes uniquement si payé)
+st.title("🏢 Espace Premium : Votre Simulateur Patrimonial & Fiscal")
 st.markdown("Bienvenue dans votre espace sécurisé. Remplissez vos informations pour générer votre audit exclusif.")
 
 # --- ÉTAPE 1 : COLLECTE DES DONNÉES ---
-st.markdown("### 📝 1. Vos Informations Financières")
+st.markdown("### 📝 1. Vos Informations Financières et Fiscales")
 
 col_input1, col_input2 = st.columns(2)
 
@@ -179,16 +177,44 @@ with col_input1:
 
 with col_input2:
     dette_totale = st.number_input("📉 Dettes et Emprunts Restants (€)", min_value=0, value=120000, step=5000)
+    nb_parts = st.number_input("👨‍👩‍👧‍👦 Nombre de Parts Fiscales (Quotient Familial)", min_value=1.0, max_value=10.0, value=1.0, step=0.5)
     taux_rendement = st.slider("📈 Objectif de Rendement Annuel Moyen (%)", min_value=1.0, max_value=12.0, value=4.0, step=0.5)
     horizon_temps = st.slider("⏳ Horizon de Projection (Années)", min_value=5, max_value=30, value=20, step=5)
 
-# --- ÉTAPE 2 : CALCULS ET SIMULATION AVANCÉE ---
+# --- ÉTAPE 2 : CALCULS FISCAUX AUTOMATIQUES ---
+# Moteur de calcul de l'Impôt sur le Revenu (Barème progressif indicatif par part)
+revenu_par_part = revenus_annuels / nb_parts
+impot_par_part = 0
+tmi = 0
+
+tranches = [
+    (11294, 0.00),
+    (28797, 0.11),
+    (82341, 0.30),
+    (177106, 0.41),
+    (float('inf'), 0.45)
+]
+
+seuil_precedent = 0
+for seuil, taux in tranches:
+    if revenu_par_part > seuil:
+        impot_par_part += (seuil - seuil_precedent) * taux
+        seuil_precedent = seuil
+    else:
+        impot_par_part += (revenu_par_part - seuil_precedent) * taux
+        tmi = int(taux * 100)
+        break
+
+impot_total_estime = int(impot_par_part * nb_parts)
+taux_moyen_imposition = round((impot_total_estime / revenus_annuels) * 100, 2) if revenus_annuels > 0 else 0
+
+# --- ÉTAPE 3 : CALCULS DE PROJECTION ---
 annees = np.arange(0, horizon_temps + 1)
 patrimoine_initial = (patrimoine_immo + epargne_dispo) - dette_totale
 
 valeurs_projection = []
 interets_cumules = []
-patrimoine_courant = patrimonio_initial
+patrimoine_courant = patrimoine_initial
 total_interets = 0
 
 for annee in annees:
@@ -204,49 +230,41 @@ for annee in annees:
         valeurs_projection.append(int(patrimoine_courant))
         interets_cumules.append(int(total_interets))
 
-# --- ÉTAPE 3 : GRAPHIQUE ET TABLEAU COMPTABLE ---
+# --- ÉTAPE 4 : GRAPHIQUES ET TABLEAUX COMPTABLES ---
 st.markdown("---")
-st.markdown("### 📊 2. Graphique d'Évolution & Tableau de Bord")
+st.markdown("### 📊 2. Votre Tableau de Bord Patrimonial & Fiscal")
+
+# Cartes d'analyse fiscale à fort impact visuel
+col_tax1, col_tax2, col_tax3 = st.columns(3)
+with col_tax1:
+    st.metric(label="📉 Impôt sur le Revenu Estimé", value=f"{impot_total_estime:,} €".replace(",", " "))
+with col_tax2:
+    st.metric(label="🎯 Votre Taux Marginal (TMI)", value=f"{tmi} %")
+with col_tax3:
+    st.metric(label="📊 Taux Moyen d'Imposition", value=f"{taux_moyen_imposition} %")
 
 tab_graph, tab_data = st.tabs(["📈 Graphique de Performance", "📋 Tableau des Chiffres"])
 
 with tab_graph:
-    # Création du graphique Plotly Premium avec un design institutionnel
     fig = go.Figure()
-    
-    # Ligne principale du patrimoine net
     fig.add_trace(go.Scatter(
-        x=annees, 
-        y=valeurs_projection, 
-        mode='lines+markers',
-        name='Patrimoine Net Estimé',
-        line=dict(color='#004B87', width=3.5),
+        x=annees, y=valeurs_projection, mode='lines+markers',
+        name='Patrimoine Net Estimé', line=dict(color='#004B87', width=3.5),
         marker=dict(size=6, color='#002D54')
     ))
-    
-    # Courbe des intérêts générés (la valeur créée)
     fig.add_trace(go.Scatter(
-        x=annees, 
-        y=interets_cumules, 
-        mode='lines',
-        name='Intérêts Capitalisés Cumulés',
-        line=dict(color='#00A86B', width=2, dash='dash'),
+        x=annees, y=interets_cumules, mode='lines',
+        name='Intérêts Capitalisés Cumulés', line=dict(color='#00A86B', width=2, dash='dash'),
     ))
-
     fig.update_layout(
         title=f"Évolution estimée de votre capital net sur {horizon_temps} ans",
-        xaxis_title="Années",
-        yaxis_title="Valeur (€)",
-        template="plotly_white",
-        hovermode="x unified",
+        xaxis_title="Années", yaxis_title="Valeur (€)",
+        template="plotly_white", hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     st.plotly_chart(fig, use_container_width=True)
 
 with tab_data:
-    st.write("Retrouvez ici le détail exact de l'évolution de vos comptes ligne par ligne :")
-    
-    # Construction d'un tableau propre pour l'utilisateur
     donnees_tableau = {
         "Année": [f"Année {a}" for a in annees],
         "Patrimoine Global (€)": [f"{v:,}".replace(",", " ") for v in valeurs_projection],
@@ -254,44 +272,42 @@ with tab_data:
     }
     st.table(donnees_tableau)
 
-# --- ÉTAPE 4 : ANALYSE INTELLIGENTE ET GÉNÉRATION DU RAPPORT ---
+# --- ÉTAPE 5 : ANALYSE INTELLIGENTE PAR L'IA ---
 st.markdown("---")
-st.markdown("### 🤖 3. Rapport d'Audit par Intelligence Artificielle")
+st.markdown("### 🤖 3. Rapport d'Audit & Optimisation Fiscale par IA")
 
 if st.button("🧠 Lancer l'Analyse IA & Créer le PDF Certifié", use_container_width=True):
-    with st.spinner("L'IA examine vos données et structure votre livrable officiel..."):
+    with st.spinner("L'IA examine votre fiscalité et prépare vos leviers de défiscalisation..."):
         
-        # Construction du prompt pour Google Gemini
+        # Le prompt transmet désormais précisément les données d'impôt calculées
         prompt_ia = f"""
-        En tant qu'expert en gestion de patrimoine haut de gamme, analyse la situation suivante :
+        En tant qu'expert en gestion de patrimoine et fiscalité française, analyse la situation suivante :
         - Patrimoine Immobilier : {patrimoine_immo} €
-        - Épargne : {epargne_dispo} €
+        - Épargne disponible : {epargne_dispo} €
         - Revenus Annuels : {revenus_annuels} €
-        - Dettes : {dette_totale} €
-        - Objectif de rendement : {taux_rendement} %
+        - Nombre de parts : {nb_parts}
+        - Impôt sur le Revenu calculé : {impot_total_estime} €
+        - Taux Marginal d'Imposition (TMI) : {tmi} %
         - Horizon de temps : {horizon_temps} ans
-        - Patrimoine net final estimé : {valeurs_projection[-1]} €
+        - Patrimoine net final attendu : {valeurs_projection[-1]} €
         
-        Rédige un rapport structuré avec 3 sections claires :
-        1. Diagnostic précis de la situation actuelle (Forces, Risques et structure de la dette).
-        2. 3 Stratégies d'optimisation fiscale et de rendement applicables immédiatement.
-        3. Plan d'action détaillé pas-à-pas pour sécuriser l'objectif de {valeurs_projection[-1]} € à terme.
-        Sois professionnel, précis et percutant dans tes conseils.
+        Rédige un rapport haut de gamme structuré :
+        1. Analyse Fiscale : Diagnostic de la situation fiscale actuelle (Impact du TMI de {tmi}%).
+        2. Leviers de Défiscalisation : Propose au moins 2 mécanismes adaptés pour réduire cet impôt de {impot_total_estime}€ (ex: PER, Immobilier de défiscalisation, PEA, Assurance-vie).
+        3. Plan d'Action : Étapes claires pour réinvestir l'impôt économisé dans la stratégie de croissance à {taux_rendement}%.
         """
         
         try:
-            # Appel à l'API Gemini
             response = client_ia.models.generate_content(
                 model='gemini-2.5-flash',
                 contents=prompt_ia
             )
             texte_rapport = response.text
             
-            # Affichage immédiat à l'écran
-            st.success("✅ Votre audit personnalisé a été généré avec succès !")
+            st.success("✅ Votre audit fiscal et patrimonial est disponible !")
             st.markdown(texte_rapport)
             
-            # --- ÉTAPE 5 : CRÉATION DU RAPPORT PDF ENRICHI ---
+            # --- ÉTAPE 6 : LIVRABLE PDF CERTIFIÉ ---
             st.markdown("---")
             st.markdown("### 📥 4. Téléchargez votre Livrable Officiel")
             
@@ -304,33 +320,34 @@ if st.button("🧠 Lancer l'Analyse IA & Créer le PDF Certifié", use_container
             style_soustitre = ParagraphStyle('SousTitrePDF', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#002D54'), spaceAfter=10)
             style_texte = ParagraphStyle('TextePDF', parent=styles['Normal'], fontSize=10, leading=15, spaceAfter=10)
             
-            # Structure visuelle du document PDF
-            story.append(Paragraph("AUDIT PATRIMONIAL ET FINANCIER CERTIFIÉ", style_titre))
-            story.append(Paragraph(f"Établi le : 2026 • Horizon de projection : {horizon_temps} ans", style_texte))
+            # Injection des données fiscales dans le livrable PDF
+            story.append(Paragraph("AUDIT PATRIMONIAL & BILAN FISCAL CERTIFIÉ", style_titre))
+            story.append(Paragraph(f"Horizon d'analyse : {horizon_temps} ans • Parts fiscales : {nb_parts}", style_texte))
             story.append(Spacer(1, 15))
             
-            story.append(Paragraph("1. Résumé des Données Clés de l'Analyse", style_soustitre))
-            story.append(Paragraph(f"• Patrimoine initial net de dettes : {patrimoine_initial:,} €".replace(",", " "), style_texte))
-            story.append(Paragraph(f"• Objectif de performance configuré : {taux_rendement} % par an", style_texte))
-            story.append(Paragraph(f"• Estimation finale du patrimoine disponible : {valeurs_projection[-1]:,} €".replace(",", " "), style_texte))
+            story.append(Paragraph("1. Synthèse de la Situation Fiscale Initiale", style_soustitre))
+            story.append(Paragraph(f"• Impôt annuel estimé avant optimisation : {impot_total_estime:,} €".replace(",", " "), style_texte))
+            story.append(Paragraph(f"• Taux Marginal d'Imposition (TMI) : {tmi} %", style_texte))
+            story.append(Paragraph(f"• Estimation du patrimoine net à terme : {valeurs_projection[-1]:,} €".replace(",", " "), style_texte))
             story.append(Spacer(1, 15))
             
-            story.append(Paragraph("2. Conclusions de l'Expertise IA", style_soustitre))
+            story.append(Paragraph("2. Recommandations Stratégiques de l'IA", style_soustitre))
             texte_formate_pdf = texte_rapport.replace("\n", "<br/>")
             story.append(Paragraph(texte_formate_pdf, style_texte))
             
             doc.build(story)
             pdf_data = buffer.getvalue()
             
-            # Bouton de téléchargement final du fichier
             st.download_button(
-                label="📥 Télécharger mon rapport d'audit au format PDF",
+                label="📥 Télécharger mon rapport d'audit fiscal (PDF)",
                 data=pdf_data,
-                file_name="Audit_Patrimonial_Premium.pdf",
+                file_name="Bilan_Fiscal_Premium.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
             
         except Exception as e:
-            st.error(f"Une erreur est survenue lors de l'analyse ou de la création du PDF : {e}")
+            st.error(f"Erreur technique lors de la création du livrable : {e}")
+
+
 
