@@ -4,9 +4,10 @@ import numpy as np
 from io import BytesIO
 from google import genai
 
-# 1. CONFIGURATION DE LA PAGE
+# 1. CONFIGURATION INITIALE DE LA PAGE
 st.set_page_config(page_title="Cabinet Digital", layout="wide")
 
+# Initialisation rigoureuse des états système
 if "sim_ok" not in st.session_state: st.session_state.sim_ok = False
 if "pay_ok" not in st.session_state: st.session_state.pay_ok = False
 if "pdf_pret" not in st.session_state: st.session_state.pdf_pret = None
@@ -15,10 +16,10 @@ try:
     CLE_API = st.secrets["GEMINI_API_KEY"]
     client_ia = genai.Client(api_key=CLE_API)
 except Exception as e:
-    st.error(f"Erreur API : {e}")
+    st.error(f"Erreur technique de clé API : {e}")
     st.stop()
 
-# 2. TEXTE DE SECOURS PROFESSIONNEL EN CAS DE QUOTA EXPIRÉ (429)
+# 2. ALGORITHME D'AUDIT DE SECOURS EN CAS DE SATURE DE QUOTAS (429)
 def obtenir_audit_secours(age, patrimoine, epargne, rendement):
     return f"""PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION
 A {age} ans, la structuration de votre patrimoine de {patrimoine:,.0f} € doit répondre à un objectif de capitalisation performante sur 20 ans. Votre effort d'épargne mensuel de {epargne} € maximisera l'effet des intérêts composés. Nous préconisons le Plan d'Épargne en Actions (PEA) pour l'exonération d'impôt après 5 ans, et l'Assurance-Vie pour sa fiscalité adoucie après 8 ans et ses avantages successoraux. Le PER complétera ce dispositif pour réduire votre impôt immédiat.
@@ -43,6 +44,7 @@ def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
     except Exception:
         return obtenir_audit_secours(age, patrimoine, epargne, rendement)
 
+# 3. MOTEUR DE CONSTRUCTION ET COMPILATION DU PDF DE 15 PAGES
 def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     from reportlab.lib.pagesizes import letter
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
@@ -58,22 +60,24 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     style_section = ParagraphStyle('S2', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#004B87'), spaceBefore=20, spaceAfter=10)
     style_corps = ParagraphStyle('C1', parent=styles['BodyText'], fontSize=10, leading=15)
 
-    # P1 : GARDE
-    story.append(Spacer(1, 150)); story.append(Paragraph("AUDIT PATRIMONIAL CERTIFIÉ", style_titre)); story.append(PageBreak())
+    # PAGE 1 : DE GARDE
+    story.append(Spacer(1, 150))
+    story.append(Paragraph("AUDIT PATRIMONIAL CERTIFIÉ", style_titre))
+    story.append(PageBreak())
 
-    # P2 : SOMMAIRE
+    # PAGE 2 : SOMMAIRE
     story.append(Paragraph("SOMMAIRE EXÉCUTIF", style_section))
-    t_som = Table([["1. Profil", "Page 3"], ["2. Projections", "Page 4"], ["3. IA", "Page 6"], ["4. Annexes", "Page 12"], ["5. Signatures", "Page 15"]], colWidths=[400, 100])
+    t_som = Table([["1. Profil", "Page 3"], ["2. Projections", "Page 4"], ["3. IA", "Page 6"], ["4. Annexes", "Page 12"], ["5. Signatures", "Page 15"]], colWidths=[380, 100])
     t_som.setStyle(TableStyle([('BOTTOMPADDING', (0,0), (-1,-1), 8), ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.HexColor('#F1F5F9'))]))
     story.append(t_som); story.append(PageBreak())
 
-    # P3 : SYNTHÈSE
+    # PAGE 3 : SYNTHÈSE
     story.append(Paragraph("1. Synthèse du profil", style_section))
-    t_p = Table([["Métrique", "Valeur"], ["Âge", f"{age} ans"], ["Patrimoine", f"{patrimoine:,.0f} €"], ["Épargne", f"{epargne} €/mois"]], colWidths=[250, 250])
+    t_p = Table([["Métrique", "Valeur"], ["Âge", f"{age} ans"], ["Patrimoine", f"{patrimoine:,.0f} €"], ["Épargne", f"{epargne} €/mois"]], colWidths=[240, 240])
     t_p.setStyle(TableStyle([('BACKGROUND', (0,0), (1,0), colors.HexColor('#F1F5F9')), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0'))]))
     story.append(t_p); story.append(PageBreak())
 
-    # P4 & P5 : TABLEAUX FINANCIERS
+    # PAGES 4 & 5 : TABLEAUX COMPTABLES DYNAMIQUES
     story.append(Paragraph("2. Projections financières", style_section))
     table_finance_data = [["Année", "Capital Initial", "Épargne", "Intérêts", "Capital Final"]]
     cap_courant = patrimoine
@@ -83,17 +87,18 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         table_finance_data.append([f"Année {an}", f"{cap_courant:,.0f} €", f"{(epargne*12):,.0f} €", f"{interets:,.0f} €", f"{cap_final:,.0f} €"])
         cap_courant = cap_final
 
-    t_f1 = Table(table_finance_data[:12], colWidths=[70, 105, 105, 105, 105])
-    t_f1.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('FONTSIZE', (0,0), (-1,-1), 9)]))
-    story.append(t_f1); story.append(PageBreak())
+    t_fin1 = Table(table_finance_data[:12], colWidths=[80, 100, 100, 100, 100])
+    t_fin1.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('FONTSIZE', (0,0), (-1,-1), 9)]))
+    story.append(t_fin1); story.append(PageBreak())
     
     story.append(Paragraph("2. Projections financières (Suite)", style_section))
-    t_f2 = Table([table_finance_data[0]] + table_finance_data[12:], colWidths=[70, 105, 105, 105, 105])
-    t_f2.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('FONTSIZE', (0,0), (-1,-1), 9)]))
-    story.append(t_f2)
+    t_fin2 = Table([table_finance_data[0]] + table_finance_data[12:], colWidths=[80, 100, 100, 100, 100])
+    t_fin2.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('FONTSIZE', (0,0), (-1,-1), 9)]))
+    story.append(t_fin2)
 
-    # P6 À P11 : ANALYSE TEXTUELLE
-    for para in texte_ia.split('\n'):
+    # PAGES 6 À 11 : INTÉGRATION INTELLIGENTE DU TEXTE IA
+    paragraphes = texte_ia.split('\n')
+    for para in paragraphes:
         txt = para.strip()
         if txt:
             if txt.upper().startswith("PARTIE") or txt.upper().startswith("CHAPITRE"):
@@ -101,7 +106,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
             else:
                 story.append(Paragraph(txt, style_corps))
 
-    # P12 À P14 : GUIDES DES 5 ANNEXES
+    # PAGES 12 À 14 : LES 5 ANNEXES PÉDAGOGIQUES
     annexes = [
         ("A", "L'Assurance-Vie", "Cadre fiscal avantageux après 8 ans. Idéal pour capitaliser sur le long terme à l'abri de l'impôt direct."),
         ("B", "Le PEA", "Exonération complète d'impôt sur les plus-values et les dividendes réinvestis après 5 ans de détention."),
@@ -115,11 +120,12 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         story.append(Paragraph(desc, style_corps))
         story.append(Paragraph("Ce guide technique rédigé par nos experts résume les règles réglementaires et fiscales en vigueur.", style_corps))
 
-    # P15 : LEGAL & SIGNATURES
-    story.append(PageBreak()); story.append(Paragraph("5. Mentions Légales et Signatures", style_section))
+    # PAGE 15 : MENTIONS LÉGALES ET COMPTEUR DE SIGNATURES
+    story.append(PageBreak())
+    story.append(Paragraph("5. Mentions Légales et Signatures", style_section))
     story.append(Paragraph("Ce document indicatif est généré automatiquement par IA. Tout investissement comporte un risque de perte en capital.", style_corps))
     story.append(Spacer(1, 30))
-    t_s = Table([["Signature de l'Expert IA", "Signature du Client"], ["Certifié conforme", "Bon pour accord"]], colWidths=[250, 250])
+    t_s = Table([["Signature de l'Expert IA", "Signature du Client"], ["Certifié conforme", "Bon pour accord"]], colWidths=[240, 240])
     t_s.setStyle(TableStyle([('LINEABOVE', (0,0), (-1,0), 0.5, colors.HexColor('#94A3B8')), ('TOPPADDING', (0,0), (-1,-1), 10), ('BOTTOMPADDING', (0,0), (-1,-1), 40)]))
     story.append(t_s)
 
@@ -127,7 +133,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     pdf_buffer.seek(0)
     return pdf_buffer.getvalue()
 
-# 5. INTERFACE UTILISATEUR (STREAMLIT)
+# 4. CONSTRUIRE L'INTERFACE UTILISATEUR COMPLÈTE (STREAMLIT)
 st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
 col_inputs, col_graph = st.columns(2)
 
@@ -146,14 +152,8 @@ with col_graph:
         capital = patrimoine_actuel * ((1 + Rendement/100) ** annees) + (epargne_mensuelle * 12) * ((1 + Rendement/100) ** annees - 1) / (Rendement/100)
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=annees, y=capital, mode='lines+markers', name='Votre projection', line=dict(color='#004B87')))
-        fig.update_layout(title="Évolution de votre capital", xaxis_title="Années", yaxis_title="Capital (€)")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Remplissez les informations à gauche pour voir votre graphique de projection.")
 
-# ÉTAPE 2 : LE VERROU PAYANT
-if st.session_state.sim_ok:
-    st.markdown("---")
+
 
 
 
