@@ -72,6 +72,73 @@ if st.session_state.simulation_faite:
             mime="application/pdf"
         )
 
+    st.markdown("### 📥 Téléchargez votre document")
+
+    # Fonction pour générer le contenu du rapport avec Gemini
+    def generer_analyse_ia(age, patrimoine, epargne, rendement):
+        prompt = f"""
+        En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit synthétique, sérieux et haut de gamme pour un client.
+        Profil du client :
+        - Âge : {age} ans
+        - Patrimoine actuel : {patrimoine} €
+        - Épargne mensuelle : {epargne} €
+        - Objectif de rendement annuel : {rendement}%
+        
+        Rédige trois sections distinctes et professionnelles :
+        1. STRATÉGIE FISCALE : Analyse des niches fiscales adaptées (ex: PEA, Assurance-Vie, PER pour la retraite).
+        2. GESTION DES RISQUES : Conseils pour sécuriser ce portefeuille sur un horizon de 20 ans.
+        3. ALLOCATION RECOMMANDÉE : Suggestions concrètes de répartition des actifs.
+        Conserve un ton expert, fluide et rassurant. Ne mets pas de caractères de mise en forme markdown complexes (pas de dièses ou d'étoiles).
+        """
+        try:
+            # Appel au client Gemini configuré au début de votre script
+            reponse = client_ia.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            return reponse.text
+        except Exception as e:
+            return f"Analyse standard : Stratégie d'optimisation patrimoniale recommandée pour un capital de {patrimoine} € avec un effort d'épargne continu."
+
+    # Fonction pour créer le fichier PDF ReportLab
+    def creer_pdf(texte_ia, age, patrimoine, epargne):
+        pdf_buffer = BytesIO()
+        doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+        story = []
+        
+        # Styles
+        styles = getSampleStyleSheet()
+        style_titre = ParagraphStyle('Titre', parent=styles['Heading1'], fontSize=24, leading=28, textColor=colors.HexColor('#004B87'), spaceAfter=20)
+        style_sous_titre = ParagraphStyle('SousTitre', parent=styles['Heading2'], fontSize=14, leading=18, textColor=colors.HexColor('#334155'), spaceAfter=15)
+        style_corps = ParagraphStyle('Corps', parent=styles['BodyText'], fontSize=11, leading=16, textColor=colors.HexColor('#1E293B'), spaceAfter=12)
+        
+        # Structure du document
+        story.append(Paragraph("AUDIT PATRIMONIAL CERTIFIÉ — IA EXPERTISE", style_titre))
+        story.append(Paragraph(f"<b>Profil analysé :</b> {age} ans | <b>Patrimoine de départ :</b> {patrimoine} € | <b>Épargne :</b> {epargne} € / mois", style_sous_titre))
+        story.append(Spacer(1, 15))
+        
+        # Découpage du texte de l'IA par paragraphes pour ReportLab
+        paragraphes = texte_ia.split('\n')
+        for para in paragraphes:
+            if para.strip():
+                story.append(Paragraph(para.strip(), style_corps))
+        
+        doc.build(story)
+        pdf_buffer.seek(0)
+        return pdf_buffer.getvalue()
+
+    # Déclenchement de la génération automatique
+    with st.spinner("Génération de votre rapport certifié en cours..."):
+        texte_rapport = generer_analyse_ia(age, patrimoine_actuel, epargne_mensuelle, Rendement)
+        pdf_data = creer_pdf(texte_rapport, age, patrimoine_actuel, epargne_mensuelle)
+
+    # Bouton de téléchargement réel alimenté par ReportLab
+    st.download_button(
+        label="⬇️ Télécharger l'Audit Patrimonial Complet (PDF)",
+        data=pdf_data,
+        file_name=f"Audit_Patrimonial_{age}ans.pdf",
+        mime="application/pdf"
+    )
 
 
 
