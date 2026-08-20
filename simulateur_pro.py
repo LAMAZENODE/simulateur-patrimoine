@@ -67,7 +67,7 @@ if st.session_state.paiement_pdf_ok:
     st.markdown("### 📥 Téléchargez votre document")
 
    
-        # Fonction modifiée avec le modèle Gemini à jour
+           # Fonction modifiée avec paramètres de configuration avancés
     def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
         prompt = f"""
         En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
@@ -88,7 +88,7 @@ if st.session_state.paiement_pdf_ok:
         PARTIE 3 : ALLOCATION DE CAPITAL RECOMMANDÉE
         Donne une proposition concrète de répartition en pourcentages (ex: 40% Immobilier, 40% Actions, 20% Monétaire).
         
-        Important : Rédige des paragraphes complets et denses. N'utilise aucun caractère markdown (pas de *, pas de #, pas de -). Utilisez uniquement du texte brut.
+        Important : Rédige des paragraphes complets, riches et denses. N'utilise aucun caractère markdown (pas de *, pas de #, pas de -). Utilisez uniquement du texte brut.
         """
         try:
             if client_ia_instance is None:
@@ -96,10 +96,14 @@ if st.session_state.paiement_pdf_ok:
                 CLE_API = st.secrets["GEMINI_API_KEY"]
                 client_ia_instance = genai.Client(api_key=CLE_API)
                 
-            # 🚀 CORRECTION : Utilisation de gemini-3.6-flash
+            # 🚀 AJOUT DE LA CONFIGURATION POUR AUGMENTER LA TAILLE DU TEXTE
             reponse = client_ia_instance.models.generate_content(
                 model="gemini-3.6-flash",
                 contents=prompt,
+                config={
+                    "max_output_tokens": 4096,  # Force l'IA à écrire un long texte sans couper
+                    "temperature": 0.3          # Rend l'IA plus stable et professionnelle sur les chiffres
+                }
             )
             if reponse.text:
                 return reponse.text
@@ -107,6 +111,7 @@ if st.session_state.paiement_pdf_ok:
                 return "Erreur : Le contenu retourné par l'IA est vide."
         except Exception as e:
             return f"Erreur technique de l'API Gemini : {str(e)}"
+
 
 
     # Fonction de création du PDF ReportLab
