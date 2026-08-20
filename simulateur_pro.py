@@ -4,8 +4,22 @@ import numpy as np
 from io import BytesIO
 from google import genai
 
-# 1. CONFIGURATION DE LA PAGE (Doit impérativement être la première commande)
+# 1. CONFIGURATION DE LA PAGE
 st.set_page_config(page_title="Cabinet Digital - Optimisation Patrimoniale", page_icon="🛡️", layout="wide")
+
+# Style CSS pour un rendu haut de gamme
+st.markdown("""
+    <style>
+    .stButton>button {
+        background-color: #004B87 !important;
+        color: white !important;
+        font-weight: bold !important;
+        font-size: 16px !important;
+        border-radius: 8px !important;
+        padding: 10px 20px !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # 2. INITIALISATION DES ÉTATS DE SESSION
 if "simulation_faite" not in st.session_state:
@@ -15,7 +29,7 @@ if "paiement_pdf_ok" not in st.session_state:
 if "pdf_pret" not in st.session_state:
     st.session_state.pdf_pret = None
 
-# 3. RÉCUPÉRATION SÉCURISÉE DES ACCÈS API GEMINI
+# 3. RÉCUPÉRATION SÉCURISÉE DE LA CLÉ API GEMINI
 try:
     CLE_API = st.secrets["GEMINI_API_KEY"]
     client_ia = genai.Client(api_key=CLE_API)
@@ -23,7 +37,7 @@ except Exception as e:
     st.error(f"Erreur de configuration technique d'API : {e}")
     st.stop()
 
-# 4. FONCTIONS GLOBALES DE CALCUL ET GÉNÉRATION
+# 4. FONCTIONS GLOBALES (Niveau d'indentation 0)
 def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
     prompt = f"""
     En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
@@ -107,7 +121,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     t_fin2.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]), ('FONTSIZE', (0,0), (-1,-1), 9), ('BOTTOMPADDING', (0,0), (-1,-1), 5)]))
     story.append(t_fin2)
 
-    # PAGES 6 À 11 : RAPPORT DE L'IA
+    # PAGES 6 À 11 : INTÉGRATION DU RAPPORT DE L'IA
     paragraphes = texte_ia.split('\n')
     for para in paragraphes:
         txt = para.strip()
@@ -160,15 +174,8 @@ with col_inputs:
     age = st.number_input("Votre âge", min_value=18, max_value=100, value=72)
     patrimoine_actuel = st.number_input("Patrimoine actuel (€)", min_value=0, value=300000)
     epargne_mensuelle = st.number_input("Épargne mensuelle (€)", min_value=0, value=1000)
-    Rendement = st.slider("Hypothèse de rendement annuel (%)", 1.0, 10.0, 4.0)
 
-    if st.button("🧮 Calculer mes projections gratuitement"):
-        st.session_state.simulation_faite = True
-        st.session_state.pdf_pret = None
 
-with col_graph:
-    if st.session_state.simulation_faite:
-        annees = np.arange(0, 21)
 
 
 
