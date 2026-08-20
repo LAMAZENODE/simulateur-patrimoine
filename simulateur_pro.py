@@ -39,13 +39,13 @@ with col_inputs:
 
     if st.button("🧮 Calculer mes projections gratuitement"):
         st.session_state.simulation_faite = True
-        # Si les chiffres changent, on force la régénération du futur PDF
-        st.session_state.pdf_pret = None 
+        st.session_state.pdf_pret = None # Force la régénération si les chiffres changent
 
 with col_graph:
     if st.session_state.simulation_faite:
         annees = np.arange(0, 21)
-        capital = patrimonio_actuel * ((1 + Rendement/100) ** annees) + (epargne_mensuelle * 12) * ((1 + Rendement/100) ** annees - 1) / (Rendement/100)
+        # CORRECTION ICI : patrimoine_actuel au lieu de patrimonio_actuel
+        capital = patrimoine_actuel * ((1 + Rendement/100) ** annees) + (epargne_mensuelle * 12) * ((1 + Rendement/100) ** annees - 1) / (Rendement/100)
         
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=annees, y=capital, mode='lines+markers', name='Votre projection', line=dict(color='#004B87')))
@@ -76,7 +76,7 @@ if st.session_state.simulation_faite:
             st.session_state.paiement_pdf_ok = True
             st.success("Paiement validé ! Votre rapport est prêt.")
 
-# FONCTIONS TECHNIQUES DE GÉNÉRATION (Déclarées globalement pour éviter les bugs)
+# --- FONCTIONS TECHNIQUES DE GÉNÉRATION ---
 def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
     prompt = f"""
     En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
@@ -111,6 +111,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     style_sous_titre_grand = ParagraphStyle('SubGrand', parent=styles['Heading2'], fontSize=15, leading=22, textColor=colors.HexColor('#475569'), alignment=1, spaceAfter=180)
     style_mention_garde = ParagraphStyle('MentionGarde', parent=styles['Normal'], fontSize=10, leading=14, textColor=colors.HexColor('#94A3B8'), alignment=1)
     style_section = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=16, leading=20, textColor=colors.HexColor('#004B87'), spaceBefore=25, spaceAfter=15, keepWithNext=True)
+    style_sous_section = ParagraphStyle('SousSection', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor('#334155'), spaceBefore=12, spaceAfter=6, keepWithNext=True)
     style_corps = ParagraphStyle('Corps', parent=styles['BodyText'], fontSize=10.5, leading=17, textColor=colors.HexColor('#1E293B'), spaceAfter=12)
 
     # PAGE 1 : DE GARDE
@@ -123,7 +124,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     # PAGE 2 : SOMMAIRE
     story.append(Paragraph("SOMMAIRE EXÉCUTIF", style_section))
     sommaire_data = [["1. Synthèse du profil", "Page 3"], ["2. Tableau d'évolution", "Page 4"], ["3. Analyse de l'IA", "Page 6"], ["4. Annexes", "Page 12"], ["5. Signatures", "Page 15"]]
-    st_table = Table(sommaire_data, colWidths=[400, 100])
+    st_table = Table(sommaire_data, colWidths=[380, 120])
     st_table.setStyle(TableStyle([('BOTTOMPADDING', (0,0), (-1,-1), 8), ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.HexColor('#F1F5F9'))]))
     story.append(st_table)
     story.append(PageBreak())
@@ -146,13 +147,13 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         table_finance_data.append([f"Année {an}", f"{cap_courant:,.0f} €", f"{(epargne*12):,.0f} €", f"{interets:,.0f} €", f"{cap_final:,.0f} €"])
         cap_courant = cap_final
 
-    t_fin1 = Table(table_finance_data[:12], colWidths=[80, 105, 105, 105, 105])
+    t_fin1 = Table(table_finance_data[:12], colWidths=[100, 100, 100, 100, 100])
     t_fin1.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1'))]))
     story.append(t_fin1)
     story.append(PageBreak())
     
     story.append(Paragraph("2. Tableau d'évolution (Suite)", style_section))
-    t_fin2 = Table([table_finance_data[0]] + table_finance_data[12:], colWidths=[80, 105, 105, 105, 105])
+    t_fin2 = Table([table_finance_data[0]] + table_finance_data[12:], colWidths=[100, 100, 100, 100, 100])
     t_fin2.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1'))]))
     story.append(t_fin2)
 
@@ -173,11 +174,11 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         else:
             story.append(Paragraph(txt, style_corps))
 
-    # PAGES 12 À 14 : ANNEXES FIXES (Remplissage)
+    # PAGES 12 À 14 : ANNEXES FIXES
     for lettre, titre in [("A", "L'Assurance-Vie"), ("B", "Le PEA"), ("C", "Le PER")]:
         story.append(PageBreak())
         story.append(Paragraph(f"4. Annexe {lettre} : Guide sur {titre}", style_section))
-        story.append(Paragraph("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.", style_corps))
+
 
 
 
