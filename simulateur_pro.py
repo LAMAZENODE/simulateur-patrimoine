@@ -4,7 +4,7 @@ import numpy as np
 from io import BytesIO
 from google import genai
 
-# Configuration de la page
+# Configuration de la page (Doit être la toute première commande Streamlit)
 st.set_page_config(page_title="Cabinet Digital - Optimisation Patrimoniale", page_icon="🛡️", layout="wide")
 
 # Initialisation sécurisée des états de session
@@ -29,7 +29,8 @@ st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
 # --- ÉTAPE 1 : LA SIMULATION GRATUITE ---
 st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
 
-col_inputs, col_graph = st.columns()
+# CORRECTION : Ajout explicite du nombre de colonnes (2) pour éviter le TypeError
+col_inputs, col_graph = st.columns(2)
 
 with col_inputs:
     age = st.number_input("Votre âge", min_value=18, max_value=100, value=35)
@@ -75,7 +76,7 @@ if st.session_state.simulation_faite:
             st.session_state.paiement_pdf_ok = True
             st.success("Paiement validé ! Votre rapport est prêt.")
 
-# --- FONCTIONS TECHNIQUES DE GÉNÉRATION ---
+# --- FONCTIONS TECHNIQUES DE GÉNÉRATION (Déclarées proprement hors des blocs conditionnels) ---
 def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
     prompt = f"""
     En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
@@ -138,7 +139,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     # PAGES 4 & 5 : TABLEAU DYNAMIQUE SUR 20 ANS
     story.append(Paragraph("2. Tableau d'évolution de l'épargne capitalisée", style_section))
     table_finance_data = [[Paragraph("<b>Année</b>", style_corps), Paragraph("<b>Capital initial</b>", style_corps), Paragraph("<b>Épargne versée</b>", style_corps), Paragraph("<b>Intérêts générés</b>", style_corps), Paragraph("<b>Capital Final</b>", style_corps)]]
-    cap_courant = patrimonio_actuel
+    cap_courant = patrimoine
     for an in range(1, 21):
         interets = (cap_courant + (epargne * 12) / 2) * (rendement / 100)
         cap_final = cap_courant + (epargne * 12) + interets
@@ -177,7 +178,6 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         story.append(PageBreak())
         story.append(Paragraph(f"4. Annexe {lettre} : Guide sur {titre}", style_section))
         story.append(Paragraph("L'optimisation globale implique l'usage de cette enveloppe pour capitaliser les intérêts sur le long terme à l'abri de l'impôt de base.", style_corps))
-        story.append(Paragraph("Les prélèvements sociaux s'appliquent uniquement au moment du débouclage ou lors des rachats partiels effectués par le souscripteur.", style_corps))
 
 
 
