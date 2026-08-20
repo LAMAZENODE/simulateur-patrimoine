@@ -29,7 +29,7 @@ st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
 # --- ÉTAPE 1 : LA SIMULATION GRATUITE ---
 st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
 
-col_inputs, col_graph = st.columns([1, 2])
+col_inputs, col_graph = st.columns()
 
 with col_inputs:
     age = st.number_input("Votre âge", min_value=18, max_value=100, value=35)
@@ -44,7 +44,6 @@ with col_inputs:
 with col_graph:
     if st.session_state.simulation_faite:
         annees = np.arange(0, 21)
-        # CORRECTION ICI : patrimoine_actuel au lieu de patrimonio_actuel
         capital = patrimoine_actuel * ((1 + Rendement/100) ** annees) + (epargne_mensuelle * 12) * ((1 + Rendement/100) ** annees - 1) / (Rendement/100)
         
         fig = go.Figure()
@@ -111,7 +110,6 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     style_sous_titre_grand = ParagraphStyle('SubGrand', parent=styles['Heading2'], fontSize=15, leading=22, textColor=colors.HexColor('#475569'), alignment=1, spaceAfter=180)
     style_mention_garde = ParagraphStyle('MentionGarde', parent=styles['Normal'], fontSize=10, leading=14, textColor=colors.HexColor('#94A3B8'), alignment=1)
     style_section = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=16, leading=20, textColor=colors.HexColor('#004B87'), spaceBefore=25, spaceAfter=15, keepWithNext=True)
-    style_sous_section = ParagraphStyle('SousSection', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor('#334155'), spaceBefore=12, spaceAfter=6, keepWithNext=True)
     style_corps = ParagraphStyle('Corps', parent=styles['BodyText'], fontSize=10.5, leading=17, textColor=colors.HexColor('#1E293B'), spaceAfter=12)
 
     # PAGE 1 : DE GARDE
@@ -124,7 +122,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     # PAGE 2 : SOMMAIRE
     story.append(Paragraph("SOMMAIRE EXÉCUTIF", style_section))
     sommaire_data = [["1. Synthèse du profil", "Page 3"], ["2. Tableau d'évolution", "Page 4"], ["3. Analyse de l'IA", "Page 6"], ["4. Annexes", "Page 12"], ["5. Signatures", "Page 15"]]
-    st_table = Table(sommaire_data, colWidths=[380, 120])
+    st_table = Table(sommaire_data, colWidths=[400, 100])
     st_table.setStyle(TableStyle([('BOTTOMPADDING', (0,0), (-1,-1), 8), ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.HexColor('#F1F5F9'))]))
     story.append(st_table)
     story.append(PageBreak())
@@ -140,7 +138,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     # PAGES 4 & 5 : TABLEAU DYNAMIQUE SUR 20 ANS
     story.append(Paragraph("2. Tableau d'évolution de l'épargne capitalisée", style_section))
     table_finance_data = [[Paragraph("<b>Année</b>", style_corps), Paragraph("<b>Capital initial</b>", style_corps), Paragraph("<b>Épargne versée</b>", style_corps), Paragraph("<b>Intérêts générés</b>", style_corps), Paragraph("<b>Capital Final</b>", style_corps)]]
-    cap_courant = patrimoine
+    cap_courant = patrimonio_actuel
     for an in range(1, 21):
         interets = (cap_courant + (epargne * 12) / 2) * (rendement / 100)
         cap_final = cap_courant + (epargne * 12) + interets
@@ -178,6 +176,10 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     for lettre, titre in [("A", "L'Assurance-Vie"), ("B", "Le PEA"), ("C", "Le PER")]:
         story.append(PageBreak())
         story.append(Paragraph(f"4. Annexe {lettre} : Guide sur {titre}", style_section))
+        story.append(Paragraph("L'optimisation globale implique l'usage de cette enveloppe pour capitaliser les intérêts sur le long terme à l'abri de l'impôt de base.", style_corps))
+        story.append(Paragraph("Les prélèvements sociaux s'appliquent uniquement au moment du débouclage ou lors des rachats partiels effectués par le souscripteur.", style_corps))
+
+
 
 
 
