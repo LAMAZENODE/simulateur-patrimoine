@@ -2,13 +2,21 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 from io import BytesIO
+from google import genai
 
-
-# Initialisation des états
+# Initialisation sécurisée des états de session
 if "simulation_faite" not in st.session_state:
     st.session_state.simulation_faite = False
 if "paiement_pdf_ok" not in st.session_state:
     st.session_state.paiement_pdf_ok = False
+
+# Configuration de l'accès à l'API Gemini
+try:
+    CLE_API = st.secrets["GEMINI_API_KEY"]
+    client_ia = genai.Client(api_key=CLE_API)
+except Exception as e:
+    st.error(f"Erreur de configuration technique d'API : {e}")
+    st.stop()
 
 st.title("Intelligence Artificielle & Expertise Patrimoniale")
 st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
@@ -62,13 +70,49 @@ if st.session_state.simulation_faite:
         if st.button("💳 Télécharger mon Audit PDF Complet (19 €)"):
             st.session_state.paiement_pdf_ok = True
             st.success("Paiement validé ! Votre rapport est prêt.")
-     # --- ÉTAPE 3 : ACCÈS AU PDF APRÈS PAIEMENT ---
+
+# --- ÉTAPE 3 : ACCÈS AU PDF APRÈS PAIEMENT ---
 if st.session_state.paiement_pdf_ok:
+    st.markdown("---")
     st.markdown("### 📥 Téléchargez votre document")
 
-   
-           def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
-        from io import BytesIO
+    # Déclaration propre des fonctions d'analyse et d'édition PDF
+    def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
+        prompt = f"""
+        En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
+        Profil du client :
+        - Âge : {age} ans
+        - Patrimoine actuel : {patrimoine} €
+        - Épargne mensuelle : {epargne} €
+        - Objectif de rendement annuel : {rendement}%
+        
+        Rédige obligatoirement trois grandes parties distinctes :
+        
+        PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION
+        Développe des conseils sur le PEA, l'Assurance-Vie et le PER adaptés à un profil de {age} ans. Explique comment optimiser la fiscalité sur 20 ans.
+        
+        PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION
+        Explique comment répartir le capital entre fonds sécurisés (Euro) et actifs de croissance (Actions/ETF) pour traverser les cycles économiques.
+        
+        PARTIE 3 : ALLOCATION DE CAPITAL RECOMMANDÉE
+        Donne une proposition concrète de répartition en pourcentages (ex: 40% Immobilier, 40% Actions, 20% Monétaire).
+        
+        Important : Rédige des paragraphes complets, riches et denses. N'utilise aucun caractère markdown (pas de *, pas de #, pas de -). Utilisez uniquement du texte brut.
+        """
+        try:
+            reponse = client_ia_instance.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt,
+                config={
+                    "max_output_tokens": 4096,
+                    "temperature": 0.3
+                }
+            )
+            return reponse.text if reponse.text else "Erreur : Le contenu de l'IA est vide."
+        except Exception as e:
+            return f"Erreur technique de l'API Gemini : {str(e)}"
+
+    def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         from reportlab.lib.pagesizes import letter
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -78,7 +122,6 @@ if st.session_state.paiement_pdf_ok:
         doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
         story = []
         
-        # Styles de texte professionnels
         styles = getSampleStyleSheet()
         style_titre_grand = ParagraphStyle('TitreGrand', parent=styles['Heading1'], fontSize=28, leading=34, textColor=colors.HexColor('#004B87'), alignment=1, spaceAfter=20)
         style_sous_titre_grand = ParagraphStyle('SubGrand', parent=styles['Heading2'], fontSize=15, leading=22, textColor=colors.HexColor('#475569'), alignment=1, spaceAfter=180)
@@ -88,18 +131,14 @@ if st.session_state.paiement_pdf_ok:
         style_sous_section = ParagraphStyle('SousSection', parent=styles['Heading3'], fontSize=12, leading=16, textColor=colors.HexColor('#334155'), spaceBefore=12, spaceAfter=6, keepWithNext=True)
         style_corps = ParagraphStyle('Corps', parent=styles['BodyText'], fontSize=10.5, leading=17, textColor=colors.HexColor('#1E293B'), spaceAfter=12)
 
-        # ==========================================
-        # PAGE 1 : PAGE DE GARDE
-        # ==========================================
+        # PAGE 1 : DE GARDE
         story.append(Spacer(1, 100))
         story.append(Paragraph("AUDIT PATRIMONIAL CERTIFIÉ", style_titre_grand))
         story.append(Paragraph("PROJECTION FINANCIÈRE À 20 ANS & OPTIMISATION FISCALE", style_sous_titre_grand))
         story.append(Paragraph("Document confidentiel édité par Cabinet Digital IA<br/>Analyses basées sur des algorithmes prédictifs avancés", style_mention_garde))
         story.append(PageBreak())
 
-        # ==========================================
-        # PAGE 2 : SOMMAIRE DU RAPPORT
-        # ==========================================
+        # PAGE 2 : SOMMAIRE
         story.append(Paragraph("SOMMAIRE EXÉCUTIF", style_section))
         story.append(Spacer(1, 20))
         sommaire_data = [
@@ -115,7 +154,7 @@ if st.session_state.paiement_pdf_ok:
             ["   Annexe C : Le Plan d'Épargne Retraite (PER) et levier TMI", "Page 14"],
             ["5. Mentions légales, décharges et signatures", "Page 15"],
         ]
-        st_table = Table(sommaire_data, colWidths=[400, 100])
+        st_table = Table(sommaire_data, colWidths=[380, 120])
         st_table.setStyle(TableStyle([
             ('BOTTOMPADDING', (0,0), (-1,-1), 8),
             ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.HexColor('#F1F5F9')),
@@ -123,11 +162,9 @@ if st.session_state.paiement_pdf_ok:
         story.append(st_table)
         story.append(PageBreak())
 
-        # ==========================================
-        # PAGE 3 : SYNTHÈSE DU PROFIL
-        # ==========================================
+        # PAGE 3 : SYNTHÈSE
         story.append(Paragraph("1. Synthèse du profil de l'investisseur", style_section))
-        story.append(Paragraph("Ce document à haute valeur ajoutée dresse un panorama complet de vos leviers financiers. Les préconisations cherchent à maximiser l'efficience fiscale de vos placements tout en respectant votre tolérance aux fluctuations des marchés de capitaux.", style_corps))
+        story.append(Paragraph("Ce document à haute valeur ajoutée dresse un panorama complet de vos leviers financiers. Les préconisations cherchent à maximiser l'efficience fiscale de vos placements tout en respectant votre tolérance aux fluctuations des marchés.", style_corps))
         story.append(Spacer(1, 15))
         
         donnees_table = [
@@ -148,109 +185,5 @@ if st.session_state.paiement_pdf_ok:
         story.append(t)
         story.append(PageBreak())
 
-        # ==========================================
-        # PAGES 4 & 5 : TABLEAU ÉVOLUTION FINANCIÈRE SUR 20 ANS
-        # ==========================================
-        story.append(Paragraph("2. Tableau d'évolution de l'épargne capitalisée", style_section))
-        story.append(Paragraph("Ce tableau simule la croissance de votre capital année après année sur deux décennies, en cumulant les intérêts de votre patrimoine de départ et vos injections d'épargne mensuelle.", style_corps))
-        story.append(Spacer(1, 10))
+        # PAGES 4 & 5 : TABLEAU FINANCIER DYNAMIQUE
 
-        table_finance_data = [[Paragraph("<b>Année</b>", style_corps), Paragraph("<b>Capital initial</b>", style_corps), Paragraph("<b>Épargne versée</b>", style_corps), Paragraph("<b>Intérêts générés</b>", style_corps), Paragraph("<b>Capital Final</b>", style_corps)]]
-        
-        cap_courant = patrimoine
-        r_taux = rendement / 100
-        total_epargne_annee = epargne * 12
-
-        for an in range(1, 21):
-            interets = (cap_courant + total_epargne_annee / 2) * r_taux
-            cap_final = cap_courant + total_epargne_annee + interets
-            
-            table_finance_data.append([
-                f"Année {an}",
-                f"{cap_courant:,.0f} €".replace(',', ' '),
-                f"{total_epargne_annee:,.0f} €".replace(',', ' '),
-                f"{interets:,.0f} €".replace(',', ' '),
-                f"{cap_final:,.0f} €".replace(',', ' ')
-            ])
-            cap_courant = cap_final
-
-        # On divise le tableau pour qu'il s'étale proprement sur 2 pages (Années 1-10 puis 11-20)
-        t_fin1 = Table(table_finance_data[:12], colWidths=[80, 105, 105, 105, 105])
-        t_fin1.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]),
-            ('FONTSIZE', (0,0), (-1,-1), 9),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
-        ]))
-        story.append(t_fin1)
-        
-        story.append(PageBreak())
-        story.append(Paragraph("2. Tableau d'évolution (Suite et projections à terme)", style_section))
-        story.append(Spacer(1, 10))
-        
-        t_fin2 = Table([table_finance_data[0]] + table_finance_data[12:], colWidths=[80, 105, 105, 105, 105])
-        t_fin2.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]),
-            ('FONTSIZE', (0,0), (-1,-1), 9),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
-        ]))
-        story.append(t_fin2)
-
-        # ==========================================
-        # PAGES 6 À 11 : ANALYSE TEXTUELLE DE L'IA
-        # ==========================================
-        paragraphes = texte_ia.split('\n')
-        for para in paragraphes:
-            txt = para.strip()
-            if not txt:
-                continue
-            
-            # Sauts de page automatiques basés sur les mots clés de l'IA pour étaler le texte
-            if "PARTIE 1" in txt or "STRATÉGIE" in txt:
-                story.append(PageBreak())
-                story.append(Paragraph("3.1 Stratégie fiscale d'optimisation", style_section))
-            elif "PARTIE 2" in txt or "GESTION DES RISQUES" in txt:
-                story.append(PageBreak())
-                story.append(Paragraph("3.2 Gestion des risques et sécurisation", style_section))
-            elif "PARTIE 3" in txt or "ALLOCATION" in txt:
-                story.append(PageBreak())
-                story.append(Paragraph("3.3 Stratégie d'allocation recommandée", style_section))
-            else:
-                story.append(Paragraph(txt, style_corps))
-
-        # ==========================================
-        # PAGES 12 À 14 : ANNEXES CLIENTS (Denses et complètes)
-        # ==========================================
-        story.append(PageBreak())
-        story.append(Paragraph("4. Annexes techniques de référence", style_section))
-        story.append(Paragraph("ANNEXE A : Le guide de l'Assurance-Vie et de la transmission", style_sous_section))
-   
-    
-        # Génération finale du document
-        doc.build(story)
-        pdf_buffer.seek(0)
-        return pdf_buffer.getvalue()
-
-
-    # Récupération sécurisée ou secours de la variable globale client_ia
-    instance_ia = client_ia if 'client_ia' in globals() else None
-
-    # Exécution du processus
-    with st.spinner("Analyse des marchés et génération de votre rapport complet..."):
-        texte_rapport = generer_analyse_ia(instance_ia, age, patrimoine_actuel, epargne_mensuelle, Rendement)
-        pdf_data = creer_pdf(texte_rapport, age, patrimoine_actuel, epargne_mensuelle, Rendement)
-
-    # Bouton de téléchargement
-    st.download_button(
-        label="⬇️ Télécharger l'Audit Patrimonial Complet (PDF)",
-        data=pdf_data,
-        file_name=f"Audit_Patrimonial_{age}ans.pdf",
-        mime="application/pdf"
-    )
-
-   
