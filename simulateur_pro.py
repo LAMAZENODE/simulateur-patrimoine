@@ -23,11 +23,11 @@ except Exception as e:
     st.error(f"Erreur de configuration technique d'API : {e}")
     st.stop()
 
-# 4. Fonctions globales de calcul et génération (Placées en haut)
-def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
+# 4. Fonctions globales de calcul et génération
+def generer_analyse_ia(client_ia_instance, age, patrimonio, epargne, rendement):
     prompt = f"""
     En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
-    Profil du client : - Âge : {age} ans - Patrimoine actuel : {patrimoine} € - Épargne mensuelle : {epargne} € - Objectif de rendement annuel : {rendement}%
+    Profil du client : - Âge : {age} ans - Patrimoine actuel : {patrimonio} € - Épargne mensuelle : {epargne} € - Objectif de rendement annuel : {rendement}%
     Rédige obligatoirement trois grandes parties distinctes en texte brut sans aucun caractère markdown (pas de *, pas de #, pas de -) :
     PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION
     PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION
@@ -43,7 +43,7 @@ def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
     except Exception as e:
         return f"Erreur technique de l'API Gemini : {str(e)}"
 
-def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
+def creer_pdf(texte_ia, age, patrimonio, epargne, rendement):
     from reportlab.lib.pagesizes import letter
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -77,7 +77,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
 
     # PAGE 3 : SYNTHÈSE
     story.append(Paragraph("1. Synthèse du profil de l'investisseur", style_section))
-    donnees_table = [["Âge", f"{age} ans"], ["Patrimoine", f"{patrimoine:,.0f} €"], ["Épargne", f"{epargne} €/mois"], ["Rendement", f"{rendement} %"]]
+    donnees_table = [["Âge", f"{age} ans"], ["Patrimoine", f"{patrimonio:,.0f} €"], ["Épargne", f"{epargne} €/mois"], ["Rendement", f"{rendement} %"]]
     t = Table(donnees_table, colWidths=[250, 250])
     t.setStyle(TableStyle([('BACKGROUND', (0,0), (1,0), colors.HexColor('#F1F5F9')), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0'))]))
     story.append(t)
@@ -86,7 +86,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     # PAGES 4 & 5 : TABLEAU COMPTABLE SUR 20 ANS
     story.append(Paragraph("2. Tableau d'évolution de l'épargne capitalisée", style_section))
     table_finance_data = [[Paragraph("<b>Année</b>", style_corps), Paragraph("<b>Capital initial</b>", style_corps), Paragraph("<b>Épargne versée</b>", style_corps), Paragraph("<b>Intérêts générés</b>", style_corps), Paragraph("<b>Capital Final</b>", style_corps)]]
-    cap_courant = patrimoine
+    cap_courant = patrimonio
     for an in range(1, 21):
         interets = (cap_courant + (epargne * 12) / 2) * (rendement / 100)
         cap_final = cap_courant + (epargne * 12) + interets
@@ -120,7 +120,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         else:
             story.append(Paragraph(txt, style_corps))
 
-    # PAGES 12 À 14 : ANNEXES FISCAUX PÉDAGOGIQUES
+    # PAGES 12 À 14 : ANNEXES FISCALES
     for lettre, titre in [("A", "L'Assurance-Vie"), ("B", "Le PEA"), ("C", "Le PER")]:
         story.append(PageBreak())
         story.append(Paragraph(f"4. Annexe {lettre} : Guide sur {titre}", style_section))
@@ -146,7 +146,10 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     return pdf_buffer.getvalue()
 
 
-# 5. Interface Graphique Streamlit
+# 5. Interface Graphique Streamlit - Structure Unifiée
+st.title("Intelligence Artificielle & Expertise Patrimoniale")
+st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
+
 st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
 col_inputs, col_graph = st.columns(2)
 
@@ -158,7 +161,7 @@ with col_inputs:
 
     if st.button("🧮 Calculer mes projections gratuitement"):
         st.session_state.simulation_faite = True
-        st.session_state.pdf_pret = None # Force la régénération si les chiffres changent
+        st.session_state.pdf_pret = None
 
 with col_graph:
     if st.session_state.simulation_faite:
@@ -170,9 +173,8 @@ with col_graph:
         fig.update_layout(title="Évolution estimée de votre patrimoine", xaxis_title="Années", yaxis_title="Capital (€)")
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Remplissez les informations à gauche pour voir votre graphique de projection.")
 
-# --- ÉTAPE 2 : OFFRE COMMERCIALE ---
+
 
 
 
