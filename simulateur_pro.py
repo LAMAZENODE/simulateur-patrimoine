@@ -65,11 +65,13 @@ if st.session_state.simulation_faite:
 
 
   # --- ÉTAPE 3 : ACCÈS AU PDF APRÈS PAIEMENT ---
+
+# --- ÉTAPE 3 : ACCÈS AU PDF APRÈS PAIEMENT ---
 if st.session_state.paiement_pdf_ok:
     st.markdown("### 📥 Téléchargez votre document")
 
-    # Fonction pour appeler Gemini
-    def generer_analyse_ia(age, patrimoine, epargne, rendement):
+    # Fonction modifiée pour accepter l'instance client_ia
+    def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
         prompt = f"""
         En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
         Profil du client :
@@ -92,7 +94,13 @@ if st.session_state.paiement_pdf_ok:
         Important : Rédige des paragraphes complets et denses. N'utilise aucun caractère markdown (pas de *, pas de #, pas de -). Utilisez uniquement du texte brut.
         """
         try:
-            reponse = client_ia.models.generate_content(
+            # Sécurité si l'instance globale n'a pas été transmise correctement
+            if client_ia_instance is None:
+                from google import genai
+                CLE_API = st.secrets["GEMINI_API_KEY"]
+                client_ia_instance = genai.Client(api_key=CLE_API)
+                
+            reponse = client_ia_instance.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
             )
@@ -127,7 +135,7 @@ if st.session_state.paiement_pdf_ok:
         story.append(Paragraph("Document d'orientation stratégique édité par Intelligence Artificielle", style_sous_titre))
         story.append(Spacer(1, 10))
         
-        # Tableau récapitulatif
+        # Tableau récapitulatif (Correction des largeurs de colonnes fixées à 250 et 250)
         donnees_table = [
             [Paragraph("<b>Métrique Patrimoniale</b>", style_corps), Paragraph("<b>Valeur renseignée</b>", style_corps)],
             ["Âge de l'investisseur", f"{age} ans"],
@@ -135,7 +143,7 @@ if st.session_state.paiement_pdf_ok:
             ["Effort d'épargne mensuel", f"{epargne} € / mois"],
             ["Objectif de rendement ciblé", f"{rendement} % par an"]
         ]
-        t = Table(donnees_table, colWidths=[200, 200])
+        t = Table(donnees_table, colWidths=[250, 250])
         t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (1,0), colors.HexColor('#F1F5F9')),
             ('TEXTCOLOR', (0,0), (1,0), colors.HexColor('#004B87')),
@@ -162,36 +170,20 @@ if st.session_state.paiement_pdf_ok:
         pdf_buffer.seek(0)
         return pdf_buffer.getvalue()
 
-    # Exécution du processus (toujours indenté dans le "if")
+    # Récupération sécurisée ou secours de la variable globale client_ia
+    instance_ia = client_ia if 'client_ia' in globals() else None
+
+    # Exécution du processus
     with st.spinner("Analyse des marchés et génération de votre rapport complet..."):
-        texte_rapport = generer_analyse_ia(age, patrimoine_actuel, epargne_mensuelle, Rendement)
+        texte_rapport = generer_analyse_ia(instance_ia, age, patrimoine_actuel, epargne_mensuelle, Rendement)
         pdf_data = creer_pdf(texte_rapport, age, patrimoine_actuel, epargne_mensuelle, Rendement)
 
-    # Bouton de téléchargement (toujours indenté dans le "if")
+    # Bouton de téléchargement
     st.download_button(
         label="⬇️ Télécharger l'Audit Patrimonial Complet (PDF)",
         data=pdf_data,
         file_name=f"Audit_Patrimonial_{age}ans.pdf",
         mime="application/pdf"
     )
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
