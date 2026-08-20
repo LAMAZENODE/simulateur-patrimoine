@@ -25,14 +25,7 @@ except Exception as e:
 
 # 4. FONCTIONS GLOBALES DE CALCUL ET GÉNÉRATION PDF
 def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
-    prompt = f"""
-    En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
-    Profil du client : - Âge : {age} ans - Patrimoine actuel : {patrimoine} € - Épargne mensuelle : {epargne} € - Objectif de rendement annuel : {rendement}%
-    Rédige obligatoirement trois grandes parties distinctes en texte brut sans aucun caractère markdown (pas de *, pas de #, pas de -) :
-    PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION
-    PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION
-    PARTIE 3 : ALLOCATION DE CAPITAL RECOMMANDÉE
-    """
+    prompt = f"En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé pour un client de {age} ans ayant {patrimoine} euros de capital et {epargne} euros d'épargne mensuelle. Rédige trois grandes parties : PARTIE 1 : STRATÉGIE FISCALE, PARTIE 2 : GESTION DES RISQUES, PARTIE 3 : ALLOCATION CONCRÈTE. N'utilise aucun caractère markdown comme des étoiles ou des dièses."
     try:
         reponse = client_ia_instance.models.generate_content(
             model="gemini-3.6-flash",
@@ -70,7 +63,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     # PAGE 2 : SOMMAIRE
     story.append(Paragraph("SOMMAIRE EXÉCUTIF", style_section))
     sommaire_data = [["1. Synthèse du profil", "Page 3"], ["2. Tableau d'évolution", "Page 4"], ["3. Analyse de l'IA", "Page 6"], ["4. Annexes réglementaires", "Page 12"], ["5. Signatures", "Page 15"]]
-    st_table = Table(sommaire_data, colWidths=[350, 150])
+    st_table = Table(sommaire_data, colWidths=[400, 100])
     st_table.setStyle(TableStyle([('BOTTOMPADDING', (0,0), (-1,-1), 8), ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.HexColor('#F1F5F9'))]))
     story.append(st_table)
     story.append(PageBreak())
@@ -83,7 +76,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     story.append(t)
     story.append(PageBreak())
 
-    # PAGES 4 & 5 : TABLEAU COMPTABLE DYNAMIQUE
+    # PAGES 4 & 5 : TABLEAU COMPTABLE DYNAMIQUE SUR 20 ANS
     story.append(Paragraph("2. Tableau d'évolution de l'épargne capitalisée", style_section))
     table_finance_data = [[Paragraph("<b>Année</b>", style_corps), Paragraph("<b>Capital initial</b>", style_corps), Paragraph("<b>Épargne versée</b>", style_corps), Paragraph("<b>Intérêts générés</b>", style_corps), Paragraph("<b>Capital Final</b>", style_corps)]]
     cap_courant = patrimoine
@@ -93,17 +86,17 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         table_finance_data.append([f"Année {an}", f"{cap_courant:,.0f} €", f"{(epargne*12):,.0f} €", f"{interets:,.0f} €", f"{cap_final:,.0f} €"])
         cap_courant = cap_final
 
-    t_fin1 = Table(table_finance_data[:12], colWidths=[70, 105, 105, 105, 105])
+    t_fin1 = Table(table_finance_data[:12], colWidths=[80, 105, 105, 105, 105])
     t_fin1.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]), ('FONTSIZE', (0,0), (-1,-1), 9), ('BOTTOMPADDING', (0,0), (-1,-1), 5)]))
     story.append(t_fin1)
     story.append(PageBreak())
     
     story.append(Paragraph("2. Tableau d'évolution (Suite)", style_section))
-    t_fin2 = Table([table_finance_data[0]] + table_finance_data[12:], colWidths=[70, 105, 105, 105, 105])
+    t_fin2 = Table([table_finance_data[0]] + table_finance_data[12:], colWidths=[80, 105, 105, 105, 105])
     t_fin2.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]), ('FONTSIZE', (0,0), (-1,-1), 9), ('BOTTOMPADDING', (0,0), (-1,-1), 5)]))
     story.append(t_fin2)
 
-    # PAGES 6 À 11 : RAPPORT DE L'IA
+    # PAGES 6 À 11 : TEXTE IA
     paragraphes = texte_ia.split('\n')
     for para in paragraphes:
         txt = para.strip()
@@ -120,20 +113,20 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         else:
             story.append(Paragraph(txt, style_corps))
 
-    # PAGES 12 À 14 : GUIDE DES 5 ANNEXES
+    # PAGES 12 À 14 : GUIDE DES 5 ANNEXES POUR ATTEINDRE LES 15 PAGES
     annexes_pro = [
-        ("A", "L'Assurance-Vie et la capitalisation", "L'optimisation globale implique l'usage de cette enveloppe pour capitaliser les intérêts sur le long terme à l'abri de l'impôt de base. Les retraits après 8 ans bénéficient d'abattements fiscaux annuels très avantageux."),
-        ("B", "Le PEA (Plan d'Épargne en Actions)", "Le PEA est une enveloppe idéale pour dynamiser votre capital sur les marchés européens. Après 5 ans de détention, l'intégralité des gains et dividendes est exonérée d'impôt sur le revenu."),
-        ("C", "Le PER (Plan d'Épargne Retraite)", "Le PER offre un levier fiscal immédiat en vous permettant de déduire vos versements de votre revenu imposable. C'est l'outil parfait pour transformer votre impôt en capital pour l'avenir."),
-        ("D", "L'Immobilier de Rendement (Pierre-Papier / SCPI)", "Les Sociétés Civiles de Placement Immobilier permettent d'investir dans l'immobilier tertiaire dès quelques centaines d'euros. Elles distribuent des revenus réguliers sous forme de loyers sans aucune contrainte de gestion."),
-        ("E", "La Transmission et l'Optimisation Successorale", "Anticiper la transmission de son patrimoine est essentiel pour protéger ses proches. L'utilisation conjointe de l'assurance-vie et des donations permet de réduire drastiquement les futurs droits de succession.")
+        ("A", "L'Assurance-Vie et la capitalisation", "L'optimisation globale implique l'usage de cette enveloppe pour capitaliser les intérêts sur le long terme à l'abri de l'impôt de base."),
+        ("B", "Le PEA (Plan d'Épargne en Actions)", "Le PEA est une enveloppe idéale pour dynamiser votre capital sur les marchés européens."),
+        ("C", "Le PER (Plan d'Épargne Retraite)", "Le PER offre un levier fiscal immédiat en vous permettant de déduire vos versements de votre revenu imposable."),
+        ("D", "L'Immobilier de Rendement (Pierre-Papier / SCPI)", "Les SCPI permettent d'investir dans l'immobilier tertiaire et de percevoir des loyers réguliers."),
+        ("E", "La Transmission et l'Optimisation Successorale", "L'utilisation conjointe de l'assurance-vie permet de réduire drastiquement les futurs droits de succession.")
     ]
 
     for lettre, titre, description in annexes_pro:
         story.append(PageBreak())
         story.append(Paragraph(f"4. Annexe {lettre} : Guide sur {titre}", style_section))
         story.append(Paragraph(description, style_corps))
-        story.append(Paragraph("Ce guide technique rédigé par nos experts résume les règles fiscales en vigueur.", style_corps))
+        story.append(Paragraph("Ce guide technique résume les règles fiscales en vigueur.", style_corps))
 
     # PAGE 15 : LEGAL & SIGNATURES
     story.append(PageBreak())
@@ -151,6 +144,22 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
 
     doc.build(story)
     pdf_buffer.seek(0)
+    return pdf_buffer.getvalue()
+
+# 5. INTERFACE UTILISATEUR (STREAMLIT)
+st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
+col_inputs, col_graph = st.columns(2)
+
+with col_inputs:
+    age = st.number_input("Votre âge", min_value=18, max_value=100, value=35)
+    patrimoine_actuel = st.number_input("Patrimoine actuel (€)", min_value=0, value=50000)
+    epargne_mensuelle = st.number_input("Épargne mensuelle (€)", min_value=0, value=300)
+    Rendement = st.slider("Hypothèse de rendement annuel (%)", 1.0, 10.0, 4.0)
+
+    if st.button("🧮 Calculer mes projections gratuitement"):
+        st.session_state.simulation_faite = True
+
+
 
 
 
