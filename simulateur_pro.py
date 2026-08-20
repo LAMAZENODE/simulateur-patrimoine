@@ -1,22 +1,23 @@
 import streamlit as st
-import plotly.graph_objects as go
+import plotly.graph_objects go
 import numpy as np
 from io import BytesIO
 from google import genai
 
-# 1. CONFIGURATION
+# 1. CONFIGURATION DE LA PAGE
 st.set_page_config(page_title="Cabinet Digital", layout="wide")
 
 if "sim_ok" not in st.session_state: st.session_state.sim_ok = False
 if "pay_ok" not in st.session_state: st.session_state.pay_ok = False
 
 try:
-    client_ia = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    CLE_API = st.secrets["GEMINI_API_KEY"]
+    client_ia = genai.Client(api_key=CLE_API)
 except Exception as e:
     st.error(f"Erreur technique de clé API : {e}")
     st.stop()
 
-# 2. MOTEUR DE GÉNÉRATION PDF (15 PAGES RESTRUCTURÉES)
+# 2. MOTEUR DE GÉNÉRATION PDF (15 PAGES SÉCURISÉES)
 def fabriquer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     from reportlab.lib.pagesizes import letter
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
@@ -54,36 +55,44 @@ def fabriquer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     for an in range(1, 21):
         int_gagnes = (courant + (epargne * 12) / 2) * (rendement / 100)
         final = courant + (epargne * 12) + int_gagnes
-        fin_data.append([f"Annee {an}", f"{courant:.0f} €", f"{epargne*12:.0f} €", f"{int_gagnes:.0f} €", f"{final:.0f} €"])
+        fin_data.append([f"Année {an}", f"{courant:.0f} €", f"{epargne*12:.0f} €", f"{int_gagnes:.0f} €", f"{final:.0f} €"])
         courant = final
-    t_f1 = Table(fin_data[:12], colWidths=[80, 105, 105, 105, 105])
+    t_f1 = Table(fin_data[:12], colWidths=[60, 110, 110, 110, 110])
     story.append(t_f1); story.append(PageBreak())
-    t_f2 = Table([fin_data[0]] + fin_data[12:], colWidths=[80, 105, 105, 105, 105])
+    
+    story.append(Paragraph("2. Projections financières (Suite)", s_sec))
+    t_f2 = Table([fin_data[0]] + fin_data[12:], colWidths=[60, 110, 110, 110, 110])
     story.append(t_f2)
 
-    # PAGES 6 À 11: TEXTE DE L'IA GEMINI
-    for p in texte_ia.split('\n'):
-        if p.strip():
-            if "PARTIE" in p:
-                story.append(PageBreak())
-                story.append(Paragraph(p.strip(), s_sec))
-            else:
-                story.append(Paragraph(p.strip(), s_txt))
+    # PAGES 6 À 11: TEXTE DE L'IA GEMINI (Correction stricte du filtrage des lignes)
+    paragraphes = texte_ia.split('\n')
+    for p in paragraphes:
+        txt = p.strip()
+        if not txt: 
+            continue
+        
+        # Sécurité : Un saut de page n'est déclenché QUE si la ligne commence strictement par CHAPITRE ou PARTIE
+        if txt.upper().startswith("PARTIE") or txt.upper().startswith("CHAPITRE"):
+            story.append(PageBreak())
+            story.append(Paragraph(txt, s_sec))
+        else:
+            story.append(Paragraph(txt, s_txt))
 
     # PAGES 12 À 14: LES 5 MODULES D'ANNEXES EXPLICATIVES
-    for l, tit, de in [
-        ("A", "L'Assurance-Vie", "Cadre fiscal avantageux après 8 ans."),
-        ("B", "Le PEA", "Exonération d'impôt sur le revenu après 5 ans."),
-        ("C", "Le PER", "Déduction fiscale immédiate à l'entrée."),
-        ("D", "Les SCPI", "Perception de revenus fonciers réguliers."),
-        ("E", "La Succession", "Abattements légaux pour protéger les proches.")
-    ]:
+    annexes_pro = [
+        ("A", "L'Assurance-Vie", "Enveloppe centrale pour capitaliser sur le long terme à l'abri de l'impôt direct. Idéal pour un horizon de 20 ans."),
+        ("B", "Le PEA (Plan Actions)", "Exonération complète d'impôt sur les plus-values et les dividendes réinvestis après 5 ans."),
+        ("C", "Le PER (Plan Retraite)", "PER offrant un puissant levier de déduction fiscale immédiate sur vos revenus imposables."),
+        ("D", "Les SCPI (Pierre-Papier)", "Placement immobilier tertiaire collectif distribuant des revenus fonciers réguliers."),
+        ("E", "La Succession", "Dispositifs d'abattements légaux indispensables pour réduire les futurs droits de transmission.")
+    ]
+    for lettre, titre, desc in annexes_pro:
         story.append(PageBreak())
-        story.append(Paragraph(f"4. Annexe {l} : {tit}", s_sec))
-        story.append(Paragraph(de, s_txt))
-        story.append(Paragraph("Ce livret récapitule les règles réglementaires du marché en vigueur.", s_txt))
+        story.append(Paragraph(f"4. Annexe {lettre} : Guide sur {titre}", s_sec))
+        story.append(Paragraph(desc, s_txt))
+        story.append(Paragraph("Ce guide récapitule les règles réglementaires et fiscales du marché en vigueur.", s_txt))
 
-    # PAGE 15: SIGNATURES JURIDIQUES (Correction du saut de page et des variables de signature)
+    # PAGE 15: SIGNATURES JURIDIQUES
     story.append(PageBreak())
     story.append(Paragraph("5. Signatures et Validation", s_sec))
     story.append(Paragraph("Ce document indicatif est généré automatiquement par IA. Tout investissement comporte un risque de perte en capital.", s_txt))
@@ -102,7 +111,7 @@ def fabriquer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     return buf.getvalue()
 
 # 3. INTERFACE UTILISATEUR (STREAMLIT)
-st.markdown("### 📊 Étape 1 : Simulation immédiate et gratuite")
+st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
 col_in, col_gr = st.columns(2)
 
 with col_in:
@@ -141,12 +150,12 @@ if st.session_state.pay_ok:
     st.success("✅ Paiement validé ! Votre rapport de 15 pages est assemblé.")
     
     with st.spinner("Analyse des marchés en cours..."):
-        prompt = f"Rédige un rapport patrimonial dense pour un client de {v_age} ans ayant {v_pat}€ de capital et {v_epa}€ d'épargne. Crée trois chapitres textuels distincts : PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION, PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION, PARTIE 3 : ALLOCATION DE CAPITAL RECOMMANDÉE. Écris en texte brut sans dièses ni étoiles."
+        prompt = f"Rédige un rapport patrimonial dense et complet pour un client de {v_age} ans ayant {v_pat} euros de capital et {v_epa} euros d'épargne. Crée trois grands chapitres : PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION, PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION, PARTIE 3 : ALLOCATION DE CAPITAL RECOMMANDÉE. Écris de longs paragraphes détaillés. Rédige uniquement en texte brut sans dièses ni étoiles."
         try:
             rep = client_ia.models.generate_content(model="gemini-3.6-flash", contents=prompt)
             txt_ia = rep.text if rep.text else "PARTIE 1 : STRATÉGIE FISCALE\nPlan standard.\nPARTIE 2 : GESTION DES RISQUES\nSécurisation.\nPARTIE 3 : ALLOCATION\nRépartition."
         except Exception:
-            txt_ia = "PARTIE 1 : STRATÉGIE FISCALE\nPlan standard.\nPARTIE 2 : GESTION DES RISQUES\nSécurisation.\nPARTIE 3 : ALLOCATION\nRépartition."
+            txt_ia = "PARTIE 1 : STRATÉGIE FISCALE\nPlan du portefeuille standard.\nPARTIE 2 : GESTION DES RISQUES\nSécurisation globale du capital.\nPARTIE 3 : ALLOCATION\nRépartition recommandée."
         
         pdf_data = fabriquer_pdf(txt_ia, v_age, v_pat, v_epa, v_ren)
         
