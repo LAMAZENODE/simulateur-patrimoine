@@ -1,6 +1,8 @@
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
+from io import BytesIO
+
 
 # Initialisation des états
 if "simulation_faite" not in st.session_state:
@@ -60,18 +62,6 @@ if st.session_state.simulation_faite:
         if st.button("💳 Télécharger mon Audit PDF Complet (19 €)"):
             st.session_state.paiement_pdf_ok = True
             st.success("Paiement validé ! Votre rapport est prêt.")
-
-    # --- ÉTAPE 3 : ACCÈS AU PDF APRÈS PAIEMENT ---
-    if st.session_state.paiement_pdf_ok:
-        st.markdown("### 📥 Téléchargez votre document")
-        # Ici votre code de téléchargement ReportLab
-        st.download_button(
-            label="⬇️ Télécharger l'Audit Patrimonial (PDF)",
-            data=b"Contenu fictif du PDF", # Remplacer par vos BytesIO ReportLab
-            file_name="Audit_Patrimoine.pdf",
-            mime="application/pdf"
-        )
-
     st.markdown("### 📥 Téléchargez votre document")
 
     # Fonction pour générer le contenu du rapport avec Gemini
@@ -91,7 +81,6 @@ if st.session_state.simulation_faite:
         Conserve un ton expert, fluide et rassurant. Ne mets pas de caractères de mise en forme markdown complexes (pas de dièses ou d'étoiles).
         """
         try:
-            # Appel au client Gemini configuré au début de votre script
             reponse = client_ia.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
@@ -102,6 +91,8 @@ if st.session_state.simulation_faite:
 
     # Fonction pour créer le fichier PDF ReportLab
     def creer_pdf(texte_ia, age, patrimoine, epargne):
+        from io import BytesIO  # <-- Sécurité : Import local pour éviter le NameError
+        
         pdf_buffer = BytesIO()
         doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
         story = []
@@ -140,5 +131,5 @@ if st.session_state.simulation_faite:
         mime="application/pdf"
     )
 
-
-
+  
+    
