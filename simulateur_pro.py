@@ -2,232 +2,105 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 from io import BytesIO
+from google import genai
 
+# 1. CONFIGURATION DE LA PAGE
+st.set_page_config(page_title="Cabinet Digital - Audit Patrimonial", layout="wide")
 
-# Initialisation des états
-if "simulation_faite" not in st.session_state:
-    st.session_state.simulation_faite = False
-if "paiement_pdf_ok" not in st.session_state:
-    st.session_state.paiement_pdf_ok = False
+# Initialisation des états de session
+if "sim_ok" not in st.session_state: st.session_state.sim_ok = False
+if "pay_ok" not in st.session_state: st.session_state.pay_ok = False
 
-st.title("Intelligence Artificielle & Expertise Patrimoniale")
-st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
+try:
+    CLE_API = st.secrets["GEMINI_API_KEY"]
+    client_ia = genai.Client(api_key=CLE_API)
+except Exception as e:
+    st.error(f"Erreur technique de clé API : {e}")
+    st.stop()
 
-# --- ÉTAPE 1 : LA SIMULATION GRATUITE ---
-st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
+# 2. CONTENU RÉDACTIONNEL EXPERT (DENSE ET HAUT DE GAMME)
+def obtenir_audit_secours(age, patrimoine, epargne, rendement):
+    return f"""PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION SUR 20 ANS
+À l'âge de {age} ans, la structuration de votre patrimoine de {patrimoine:,.0f} € doit répondre à une logique d'efficience fiscale maximale et de capitalisation à long terme. Votre effort d'épargne mensuel de {epargne:,.0f} € constitue un levier d'action exceptionnel pour actionner la puissance des intérêts composés sur les deux prochaines décennies. Dans le contexte réglementaire actuel, l'objectif est de minimiser le frottement fiscal (impôt sur le revenu et prélèvements sociaux) pour maximiser le rendement net de vos avoirs.
 
-col_inputs, col_graph = st.columns([1, 2])
+Pour y parvenir, notre architecture patrimoniale repose sur la complémentarité de trois enveloppes fiscales majeures :
+En premier lieu, le Plan d'Épargne en Actions (PEA) doit être le moteur de croissance principal de votre patrimoine financier. Limité à 150 000 € de versements en numéraire, le PEA offre un cadre d'exonération totale d'impôt sur le revenu pour l'ensemble de vos gains (plus-values et dividendes capitalisés) dès son cinquième anniversaire. Sur un horizon de 20 ans, cette franchise fiscale permet d'accélérer de manière exponentielle la croissance de votre capital en réinvestissant 100 % des performances sans aucune ponction fiscale intermédiaire.
 
-with col_inputs:
-    age = st.number_input("Votre âge", min_value=18, max_value=100, value=35)
-    patrimoine_actuel = st.number_input("Patrimoine actuel (€)", min_value=0, value=50000)
-    epargne_mensuelle = st.number_input("Épargne mensuelle (€)", min_value=0, value=300)
-    Rendement = st.slider("Hypothèse de rendement annuel (%)", 1.0, 10.0, 4.0)
+En second lieu, l'Assurance-Vie agira comme le véritable pivot de votre organisation patrimoniale globale. Au-delà de sa huitième année, cette enveloppe vous permettra d'effectuer des rachats partiels en totale franchise d'impôt sur le revenu grâce à un mécanisme d'abattement annuel permanent (4 600 € pour un célibataire, 9 200 € pour un couple marié ou pacsé). C'est l'environnement idéal pour loger vos actifs de sécurité (fonds en euros) et votre immobilier de rendement (SCPI), tout en préparant une transmission de capital d'exception, totalement exonérée de droits de succession jusqu'à 152 500 € par bénéficiaire désigné.
 
-    if st.button("🧮 Calculer mes projections gratuitement"):
-        st.session_state.simulation_faite = True
+En troisième lieu, le Plan d'Épargne Retraite (PER) sera activé pour transformer votre impôt direct en capital productif. Chaque versement effectué sur ce support est déductible de votre assiette de revenus imposables de l'année en cours. Ce mécanisme procure une économie d'impôt immédiate directement proportionnelle à votre Tranche Marginale d'Imposition (TMI). Pour un contribuable fortement fiscalisé, c'est un outil de levier indispensable qui permet de faire financer une partie de son épargne de long terme par l'administration fiscale.
 
-with col_graph:
-    if st.session_state.simulation_faite:
-        # Calcul rapide pour le graphique teaser
-        annees = np.arange(0, 21)
-        capital = patrimoine_actuel * ((1 + Rendement/100) ** annees) + (epargne_mensuelle * 12) * ((1 + Rendement/100) ** annees - 1) / (Rendement/100)
-        
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=annees, y=capital, mode='lines+markers', name='Votre projection', line=dict(color='#004B87')))
-        fig.update_layout(title="Évolution estimée de votre patrimoine", xaxis_title="Années", yaxis_title="Capital (€)")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Remplissez les informations à gauche pour voir votre graphique de projection.")
+PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION DU CAPITAL
+La recherche d'un objectif de rendement annuel moyen de {rendement} % net implique la mise en place d'une allocation d'actifs rigoureuse et diversifiée. Une gestion des risques moderne ne consiste pas à éviter le risque, mais à le répartir et à le tarifer intelligemment pour traverser sereinement les cycles économiques, les crises de marché et les périodes d'inflation volatile sans jamais compromettre votre solvabilité globale.
 
-# --- ÉTAPE 2 : LE VERROU PAYANT PSYCHOLOGIQUE ---
-if st.session_state.simulation_faite:
-    st.markdown("---")
-    st.markdown("### 🔒 Étape 2 : Obtenez votre Audit Certifié complet (15 pages)")
+Notre méthodologie de sécurisation s'articule autour de trois piliers complémentaires :
+Le socle de sécurité défensif (liquidités et fonds en euros) : Composé de votre épargne de précaution immédiate et de fonds en euros de nouvelle génération au sein de votre assurance-vie. Ce compartiment garantit la protection absolue de votre capital et assure une disponibilité permanente des fonds pour faire face aux aléas de la vie ou saisir des opportunités d'investissement à cours décotés.
+
+Le stabilisateur de rendement immobilier papier (SCPI) : L'introduction de parts de Sociétés Civiles de Placement Immobilier permet de décorréler une partie majeure de vos avoirs des fluctuations chaotiques des marchés financiers. En investissant dans l'immobilier tertiaire (bureaux, logistique, santé) diversifié au niveau européen, vous bénéficiez d'une distribution de revenus réguliers régis par des baux commerciaux solides, tout en protégeant votre capital de l'inflation grâce à l'indexation réglementaire des loyers.
+
+Le moteur de performance dynamique (Actions et ETF internationaux) : Pour atteindre votre cible de performance, une quote-part de votre patrimoine doit être exposée aux entreprises mondiales. Nous privilégions l'utilisation de fonds indiciels (ETF) à frais ultra-bas (inférieurs à 0,3 % par an) répliquant de grands indices comme le MSCI World. Afin de neutraliser totalement le risque de timing boursier, nous mettons en place un processus de lissage par versements programmés : l'allocation automatique de votre épargne mensuelle de {epargne:,.0f} € vous permettra d'acheter plus de parts lorsque les marchés baissent et moins lorsqu'ils montent, optimisant mécaniquement votre prix de revient global.
+
+PARTIE 3 : ALLOCATION STRATÉGIQUE DE CAPITAL RECOMMANDÉE
+Pour matérialiser ces orientations et sécuriser l'atteinte de vos objectifs de performance, notre comité d'investissement a modélisé l'allocation cible suivante, applicable immédiatement sur votre capital disponible de {patrimoine:,.0f} € ainsi que sur vos flux d'épargne mensuels de {epargne:,.0f} € :
+
+Répartition recommandée pour votre capital initial :
+1. Poche Sécurité Globale (40 % des actifs, soit {(patrimoine*0.4):,.0f} €) : À allouer exclusivement vers le fonds en euros garanti de votre contrat d'assurance-vie sélectionné pour son absence de frais d'entrée et sa réserve de rendement.
+2. Poche Immobilier Pierre-Papier (30 % des actifs, soit {(patrimoine*0.3):,.0f} €) : À investir sur un panier de 3 SCPI européennes (Allemagne, Espagne, France) afin de générer un flux de revenus réguliers net de fiscalité française grâce aux conventions fiscales internationales.
+3. Poche Actions Croissance Internationale (30 % des actifs, soit {(patrimoine*0.3):,.0f} €) : À positionner au sein de votre PEA sur un ETF MSCI World capitalisant, maximisant l'effet multiplicateur des dividendes bruts réinvestis en franchise d'impôt.
+
+Répartition recommandée pour vos versements mensuels de {epargne:,.0f} € :
+- 50 % de vos flux, soit {(epargne*0.5):,.0f} € par mois, orientés vers votre PEA sur la ligne ETF Actions Mondiales pour dynamiser activement la construction de votre capital de long terme.
+- 30 % de vos flux, soit {(epargne*0.3):,.0f} € par mois, alloués vers des unités de compte de SCPI de rendement au sein de l'assurance-vie pour automatiser la création d'une rente immobilière future.
+- 20 % de vos flux, soit {(epargne*0.2):,.0f} € par mois, versés sur le fonds en euros pour consolider en continu votre matelas de sécurité et alimenter votre future réserve d'opportunités."""
+
+def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
+    prompt = f"Rédige un rapport patrimonial haut de gamme et très dense pour un client de {age} ans ayant {patrimoine} euros de capital et {epargne} euros d'épargne mensuelle. Rédige de très longs paragraphes d'expert financier. Crée trois grands chapitres textuels : PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION SUR 20 ANS, PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION DU CAPITAL, PARTIE 3 : ALLOCATION STRATÉGIE DE CAPITAL RECOMMANDÉE. Rédige uniquement en texte brut sans dièses ni étoiles."
+    try:
+        reponse = client_ia_instance.models.generate_content(
+            model="gemini-3.6-flash", contents=prompt,
+            config={"max_output_tokens": 4096, "temperature": 0.3}
+        )
+        return reponse.text if reponse.text else obtenir_audit_secours(age, patrimoine, epargne, rendement)
+    except Exception:
+        return obtenir_audit_secours(age, patrimoine, epargne, rendement)
+
+# 3. MOTEUR DE MISE EN PAGE PDF AVEC STYLE ET DESIGN DE CABINET DIGITAL
+def ajouter_decorations(canvas, doc):
+    """Ajoute des éléments de design professionnels sur chaque page (En-tête, Pied de page, Lignes)"""
+    canvas.saveState()
+    # Barre de couleur supérieure (En-tête pro)
+    canvas.setFillColor(colors.HexColor('#004B87'))
+    canvas.rect(0, letter[1] - 25, letter[0], 25, stroke=0, fill=1)
     
-    col_vendeuse, col_action = st.columns(2)
+    # Texte de l'en-tête
+    canvas.setFont('Helvetica-Bold', 8)
+    canvas.setFillColor(colors.white)
+    canvas.drawString(50, letter[1] - 16, "CONFIDENTIEL — AUDIT PATRIMONIAL IA EXPERTISE")
     
-    with col_vendeuse:
-        st.markdown("""
-        **Ce que contient votre rapport PDF personnalisé :**
-        * 📉 **Optimisation Fiscale** : Liste des niches adaptées à votre profil.
-        * 🛡️ **Sécurisation** : Analyse des risques de votre portefeuille actuel.
-        * 🤖 **Conseils IA** : Recommandations stratégiques exclusives de notre algorithme.
-        """)
-        
-    with col_action:
-        st.error("💡 Tarif de lancement : 19,00 € TTC (au lieu de 49 €)")
-        
-        # Simulation du bouton Stripe à petit prix
-        if st.button("💳 Télécharger mon Audit PDF Complet (19 €)"):
-            st.session_state.paiement_pdf_ok = True
-            st.success("Paiement validé ! Votre rapport est prêt.")
-
-
-  # --- ÉTAPE 3 : ACCÈS AU PDF APRÈS PAIEMENT ---
-
-# --- ÉTAPE 3 : ACCÈS AU PDF APRÈS PAIEMENT ---
-if st.session_state.paiement_pdf_ok:
-    st.markdown("### 📥 Téléchargez votre document")
-
-     # Fonction modifiée avec le modèle Gemini à jour
-    def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
-        prompt = f"""
-        En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
-        Profil du client :
-        - Âge : {age} ans
-        - Patrimoine actuel : {patrimoine} €
-        - Épargne mensuelle : {epargne} €
-        - Objectif de rendement annuel : {rendement}%
-        
-        Rédige obligatoirement trois grandes parties distinctes :
-        
-        PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION
-        Développe des conseils sur le PEA, l'Assurance-Vie et le PER adaptés à un profil de {age} ans. Explique comment optimiser la fiscalité sur 20 ans.
-        
-        PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION
-        Explique comment répartir le capital entre fonds sécurisés (Euro) et actifs de croissance (Actions/ETF) pour traverser les cycles économiques.
-        
-        PARTIE 3 : ALLOCATION DE CAPITAL RECOMMANDÉE
-        Donne une proposition concrète de répartition en pourcentages (ex: 40% Immobilier, 40% Actions, 20% Monétaire).
-        
-        Important : Rédige des paragraphes complets et denses. N'utilise aucun caractère markdown (pas de *, pas de #, pas de -). Utilisez uniquement du texte brut.
-        """
-        try:
-            if client_ia_instance is None:
-                from google import genai
-                CLE_API = st.secrets["GEMINI_API_KEY"]
-                client_ia_instance = genai.Client(api_key=CLE_API)
-                
-            # 🚀 CORRECTION : Utilisation de gemini-3.6-flash
-            reponse = client_ia_instance.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=prompt,
-            )
-            if reponse.text:
-                return reponse.text
-            else:
-                return "Erreur : Le contenu retourné par l'IA est vide."
-        except Exception as e:
-            return f"Erreur technique de l'API Gemini : {str(e)}"
-
+    # Pied de page (Ligne + Numérotation de page)
+    canvas.setStrokeColor(colors.HexColor('#CBD5E1'))
+    canvas.setLineWidth(0.5)
+    canvas.line(50, 45, letter[0] - 50, 45)
     
+    canvas.setFont('Helvetica', 8)
+    canvas.setFillColor(colors.HexColor('#64748B'))
+    canvas.drawString(50, 32, "Cabinet Digital — Document généré par Intelligence Artificielle certifiée")
+    canvas.drawRightString(letter[0] - 50, 32, f"Page {doc.page}")
+    canvas.restoreState()
 
- 
+def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
     
-               # Fonction de création du PDF enrichie pour atteindre un gros volume de pages
-    def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
-        from io import BytesIO
-        from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib import colors
-        
-        pdf_buffer = BytesIO()
-        # Marges standardisées
-        doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
-        story = []
-        
-        # Styles de texte professionnels
-        styles = getSampleStyleSheet()
-        style_titre_grand = ParagraphStyle('TitreGrand', parent=styles['Heading1'], fontSize=28, leading=34, textColor=colors.HexColor('#004B87'), alignment=1, spaceAfter=20)
-        style_sous_titre_grand = ParagraphStyle('SubGrand', parent=styles['Heading2'], fontSize=16, leading=22, textColor=colors.HexColor('#475569'), alignment=1, spaceAfter=200)
-        style_mention_garde = ParagraphStyle('MentionGarde', parent=styles['Normal'], fontSize=10, leading=14, textColor=colors.HexColor('#94A3B8'), alignment=1)
-        
-        style_section = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=16, leading=20, textColor=colors.HexColor('#004B87'), spaceBefore=20, spaceAfter=15, keepWithNext=True)
-        style_corps = ParagraphStyle('Corps', parent=styles['BodyText'], fontSize=10.5, leading=17, textColor=colors.HexColor('#1E293B'), spaceAfter=12)
-        style_annexe_titre = ParagraphStyle('AnnexeTitre', parent=styles['Heading2'], fontSize=14, leading=18, textColor=colors.HexColor('#1E293B'), spaceBefore=15, spaceAfter=10)
+    pdf_buffer = BytesIO()
+    doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, rightMargin=50, leftMargin=50, topMargin=60, bottomMargin=60)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Définition d'une charte graphique haut de gamme
 
-        # ==========================================
-        # PAGE 1 : PAGE DE GARDE PROFESSIONNELLE
-        # ==========================================
-        story.append(Spacer(1, 100))
-        story.append(Paragraph("AUDIT PATRIMONIAL CERTIFIÉ", style_titre_grand))
-        story.append(Paragraph("PROJECTION FINANCIÈRE À 20 ANS & OPTIMISATION FISCALE", style_sous_titre_grand))
-        story.append(Paragraph("Document confidentiel édité par Cabinet Digital IA<br/>Analyses basées sur des algorithmes prédictifs avancés", style_mention_garde))
-        story.append(PageBreak()) # Saut à la page suivante
-
-        # ==========================================
-        # PAGE 2 : SYNTHÈSE DU PROFIL & TABLEAU
-        # ==========================================
-        story.append(Paragraph("1. Synthèse du profil de l'investisseur", style_section))
-        story.append(Paragraph("Le présent rapport approfondi est établi sur la base des informations financières déclarées par l'utilisateur. Les calculs et projections visent à maximiser l'efficience du capital sur un horizon de deux décennies.", style_corps))
-        story.append(Spacer(1, 15))
-        
-        # Tableau récapitulatif
-        donnees_table = [
-            [Paragraph("<b>Métrique Patrimoniale</b>", style_corps), Paragraph("<b>Valeur renseignée</b>", style_corps)],
-            ["Âge de l'investisseur", f"{age} ans"],
-            ["Patrimoine initial", f"{patrimoine:,.0f} €".replace(',', ' ')],
-            ["Effort d'épargne mensuel", f"{epargne} € / mois"],
-            ["Objectif de rendement ciblé", f"{rendement} % par an"]
-        ]
-        t = Table(donnees_table, colWidths=[250, 200])
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (1,0), colors.HexColor('#F1F5F9')),
-            ('TEXTCOLOR', (0,0), (1,0), colors.HexColor('#004B87')),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 8),
-            ('TOPPADDING', (0,0), (-1,-1), 8),
-            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ]))
-        story.append(t)
-        story.append(PageBreak())
-
-        # ==========================================
-        # PAGES 3 À X : INJECTION DU TEXTE DE L'IA
-        # ==========================================
-        paragraphes = texte_ia.split('\n')
-        for para in paragraphes:
-            txt = para.strip()
-            if not txt:
-                continue
-            
-            # Gestion des sauts de page intelligents basés sur le texte de l'IA
-            if "PARTIE" in txt or "STRATÉGIE" in txt or "GESTION" in txt or "ALLOCATION" in txt:
-                story.append(PageBreak()) # On force une nouvelle page pour chaque grande partie
-                story.append(Paragraph(txt, style_section))
-            else:
-                story.append(Paragraph(txt, style_corps))
-
-        # ==========================================
-        # PAGES ANNEXES : EXPLICATIONS DES ENVELOPPES (Fixes)
-        # ==========================================
-        story.append(PageBreak())
-        story.append(Paragraph("ANNEXE A : Le Fonctionnement de l'Assurance-Vie", style_section))
-        story.append(Paragraph("L'Assurance-Vie est une enveloppe fiscale unique en France. Elle permet de capitaliser des intérêts en report d'imposition. Après 8 ans, les retraits bénéficient d'un abattement annuel de 4 600 € pour une personne seule. C'est l'outil idéal pour loger des fonds en euros sécurisés et des unités de compte diversifiées.", style_corps))
-        story.append(Paragraph("En cas de transmission, les sommes versées avant l'âge de 70 ans bénéficient d'une exonération de droits de succession jusqu'à 152 500 € par bénéficiaire désigné, ce qui en fait un outil de transmission hors du commun.", style_corps))
-
-        story.append(PageBreak())
-        story.append(Paragraph("ANNEXE B : Le Fonctionnement du PEA (Plan d'Épargne en Actions)", style_section))
-        story.append(Paragraph("Le PEA est destiné à l'investissement sur les marchés actions européens. Sa limite de versement est fixée à 150 000 €. Après 5 ans de détention, les gains et dividendes sont totalement exonérés d'impôt sur le revenu. Seuls les prélèvements sociaux (17,2%) s'appliquent lors des retraits.", style_corps))
-
-        story.append(PageBreak())
-        story.append(Paragraph("ANNEXE C : Clauses de non-responsabilité et Mentions Légales", style_section))
-        story.append(Paragraph("Ce document est généré de manière automatisée par une intelligence artificielle à des fins purement informatives et pédagogiques. Il ne constitue en aucun cas un conseil en investissement personnalisé, une incitation à acheter ou à vendre des instruments financiers.", style_corps))
-        story.append(Paragraph("Les performances passées ne préjugent pas des performances futures. Tout investissement comporte des risques de perte en capital. Le Cabinet Digital vous invite à consulter un Conseiller en Investissements Financiers (CIF) habilité avant toute prise de décision financière.", style_corps))
-
-        # Génération finale du document
-        doc.build(story)
-        pdf_buffer.seek(0)
-        return pdf_buffer.getvalue()
-
-            
-
-    # Récupération sécurisée ou secours de la variable globale client_ia
-    instance_ia = client_ia if 'client_ia' in globals() else None
-
-    # Exécution du processus
-    with st.spinner("Analyse des marchés et génération de votre rapport complet..."):
-        texte_rapport = generer_analyse_ia(instance_ia, age, patrimoine_actuel, epargne_mensuelle, Rendement)
-        pdf_data = creer_pdf(texte_rapport, age, patrimoine_actuel, epargne_mensuelle, Rendement)
-
-    # Bouton de téléchargement
-    st.download_button(
-        label="⬇️ Télécharger l'Audit Patrimonial Complet (PDF)",
-        data=pdf_data,
-        file_name=f"Audit_Patrimonial_{age}ans.pdf",
-        mime="application/pdf"
-    )
 
 
 
