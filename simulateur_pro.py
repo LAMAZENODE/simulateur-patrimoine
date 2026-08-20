@@ -4,7 +4,7 @@ import numpy as np
 from io import BytesIO
 from google import genai
 
-# 1. INITIALISATION ET CONFIGURATION
+# 1. CONFIGURATION
 st.set_page_config(page_title="Cabinet Digital", layout="wide")
 
 if "sim_ok" not in st.session_state: st.session_state.sim_ok = False
@@ -16,7 +16,7 @@ except Exception as e:
     st.error(f"Erreur technique de clé API : {e}")
     st.stop()
 
-# 2. MOTEUR DE GÉNÉRATION PDF (15 PAGES STRUTURÉES)
+# 2. MOTEUR DE GÉNÉRATION PDF (15 PAGES RESTRUCTURÉES)
 def fabriquer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     from reportlab.lib.pagesizes import letter
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
@@ -71,16 +71,30 @@ def fabriquer_pdf(texte_ia, age, patrimoine, epargne, rendement):
                 story.append(Paragraph(p.strip(), s_txt))
 
     # PAGES 12 À 14: LES 5 MODULES D'ANNEXES EXPLICATIVES
-    for l, tit, de in [("A", "L'Assurance-Vie", "Cadre fiscal avantageux après 8 ans."), ("B", "Le PEA", "Exonération d'impôt sur le revenu après 5 ans."), ("C", "Le PER", "Déduction fiscale immédiate à l'entrée."), ("D", "Les SCPI", "Perception de revenus fonciers réguliers."), ("E", "La Succession", "Abattements légaux pour protéger les proches.")]:
+    for l, tit, de in [
+        ("A", "L'Assurance-Vie", "Cadre fiscal avantageux après 8 ans."),
+        ("B", "Le PEA", "Exonération d'impôt sur le revenu après 5 ans."),
+        ("C", "Le PER", "Déduction fiscale immédiate à l'entrée."),
+        ("D", "Les SCPI", "Perception de revenus fonciers réguliers."),
+        ("E", "La Succession", "Abattements légaux pour protéger les proches.")
+    ]:
         story.append(PageBreak())
         story.append(Paragraph(f"4. Annexe {l} : {tit}", s_sec))
         story.append(Paragraph(de, s_txt))
         story.append(Paragraph("Ce livret récapitule les règles réglementaires du marché en vigueur.", s_txt))
 
-    # PAGE 15: SIGNATURES JURIDIQUES
+    # PAGE 15: SIGNATURES JURIDIQUES (Correction du saut de page et des variables de signature)
     story.append(PageBreak())
     story.append(Paragraph("5. Signatures et Validation", s_sec))
+    story.append(Paragraph("Ce document indicatif est généré automatiquement par IA. Tout investissement comporte un risque de perte en capital.", s_txt))
+    story.append(Spacer(1, 15))
+    
     t_sig = Table([["Signature de l'Expert IA", "Signature du Client"], ["Certifié conforme", "Bon pour accord"]], colWidths=[250, 250])
+    t_sig.setStyle(TableStyle([
+        ('LINEABOVE', (0,0), (-1,0), 0.5, colors.HexColor('#94A3B8')),
+        ('TOPPADDING', (0,0), (-1,-1), 10),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 40)
+    ]))
     story.append(t_sig)
 
     doc.build(story)
@@ -103,7 +117,7 @@ with col_gr:
     if st.session_state.sim_ok:
         ans = np.arange(0, 21)
         caps = v_pat * ((1 + v_ren/100) ** ans) + (v_epa * 12) * ((1 + v_ren/100) ** ans - 1) / (v_ren/100)
-        fig = go.Figure(go.Scatter(x=ans, y=caps, mode='lines+markers', line=dict(color='#004B87')))
+        fig = go.Figure(go.Scatter(x=ans, y=caps, mode='lines+markers', name='Projection', line=dict(color='#004B87')))
         fig.update_layout(title="Évolution de votre capital", xaxis_title="Années", yaxis_title="Capital (€)")
         st.plotly_chart(fig, use_container_width=True)
     else:
@@ -121,7 +135,7 @@ if st.session_state.sim_ok:
         if st.button("💳 Débloquer mon Audit PDF Complet (19 €)"): 
             st.session_state.pay_ok = True
 
-# ÉTAPE 3 : ACCÈS AU PDF APRÈS ENREGISTREMENT DE SESSION
+# ÉTAPE 3 : BLOC DE TÉLÉCHARGEMENT
 if st.session_state.pay_ok:
     st.markdown("---")
     st.success("✅ Paiement validé ! Votre rapport de 15 pages est assemblé.")
@@ -130,7 +144,7 @@ if st.session_state.pay_ok:
         prompt = f"Rédige un rapport patrimonial dense pour un client de {v_age} ans ayant {v_pat}€ de capital et {v_epa}€ d'épargne. Crée trois chapitres textuels distincts : PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION, PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION, PARTIE 3 : ALLOCATION DE CAPITAL RECOMMANDÉE. Écris en texte brut sans dièses ni étoiles."
         try:
             rep = client_ia.models.generate_content(model="gemini-3.6-flash", contents=prompt)
-            txt_ia = rep.text if rep.text else "Audit Standard de performance."
+            txt_ia = rep.text if rep.text else "PARTIE 1 : STRATÉGIE FISCALE\nPlan standard.\nPARTIE 2 : GESTION DES RISQUES\nSécurisation.\nPARTIE 3 : ALLOCATION\nRépartition."
         except Exception:
             txt_ia = "PARTIE 1 : STRATÉGIE FISCALE\nPlan standard.\nPARTIE 2 : GESTION DES RISQUES\nSécurisation.\nPARTIE 3 : ALLOCATION\nRépartition."
         
@@ -142,6 +156,7 @@ if st.session_state.pay_ok:
             file_name=f"Audit_Patrimonial_{v_age}ans.pdf",
             mime="application/pdf"
         )
+
 
 
 
