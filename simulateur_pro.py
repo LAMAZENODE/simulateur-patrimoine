@@ -89,26 +89,32 @@ if st.session_state.simulation_faite:
         except Exception as e:
             return f"Analyse standard : Stratégie d'optimisation patrimoniale recommandée pour un capital de {patrimoine} € avec un effort d'épargne continu."
 
-    # Fonction pour créer le fichier PDF ReportLab
+  
+        # Fonction pour créer le fichier PDF ReportLab
     def creer_pdf(texte_ia, age, patrimoine, epargne):
-        from io import BytesIO  # <-- Sécurité : Import local pour éviter le NameError
+        # 🚨 IMPORTS DE SÉCURITÉ LOCAUX POUR ÉVITER LES NAMEERROR
+        from io import BytesIO
+        from reportlab.lib.pagesizes import letter
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
         
         pdf_buffer = BytesIO()
         doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
         story = []
         
-        # Styles
+        # Styles de texte
         styles = getSampleStyleSheet()
         style_titre = ParagraphStyle('Titre', parent=styles['Heading1'], fontSize=24, leading=28, textColor=colors.HexColor('#004B87'), spaceAfter=20)
         style_sous_titre = ParagraphStyle('SousTitre', parent=styles['Heading2'], fontSize=14, leading=18, textColor=colors.HexColor('#334155'), spaceAfter=15)
         style_corps = ParagraphStyle('Corps', parent=styles['BodyText'], fontSize=11, leading=16, textColor=colors.HexColor('#1E293B'), spaceAfter=12)
         
-        # Structure du document
+        # Structure du document PDF
         story.append(Paragraph("AUDIT PATRIMONIAL CERTIFIÉ — IA EXPERTISE", style_titre))
         story.append(Paragraph(f"<b>Profil analysé :</b> {age} ans | <b>Patrimoine de départ :</b> {patrimoine} € | <b>Épargne :</b> {epargne} € / mois", style_sous_titre))
         story.append(Spacer(1, 15))
         
-        # Découpage du texte de l'IA par paragraphes pour ReportLab
+        # Découpage du texte de l'IA par paragraphes
         paragraphes = texte_ia.split('\n')
         for para in paragraphes:
             if para.strip():
@@ -117,6 +123,7 @@ if st.session_state.simulation_faite:
         doc.build(story)
         pdf_buffer.seek(0)
         return pdf_buffer.getvalue()
+
 
     # Déclenchement de la génération automatique
     with st.spinner("Génération de votre rapport certifié en cours..."):
