@@ -62,9 +62,12 @@ if st.session_state.simulation_faite:
         if st.button("💳 Télécharger mon Audit PDF Complet (19 €)"):
             st.session_state.paiement_pdf_ok = True
             st.success("Paiement validé ! Votre rapport est prêt.")
-      st.markdown("### 📥 Téléchargez votre document")
+     
+    # --- ÉTAPE 3 : ACCÈS AU PDF APRÈS PAIEMENT ---
+if st.session_state.paiement_pdf_ok:
+    st.markdown("### 📥 Téléchargez votre document")
 
-    # Fonction corrigée pour appeler Gemini (Nouvelle syntaxe SDK 2025/2026)
+    # Fonction pour appeler Gemini
     def generer_analyse_ia(age, patrimoine, epargne, rendement):
         prompt = f"""
         En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
@@ -88,7 +91,6 @@ if st.session_state.simulation_faite:
         Important : Rédige des paragraphes complets et denses. N'utilise aucun caractère markdown (pas de *, pas de #, pas de -). Utilisez uniquement du texte brut.
         """
         try:
-            # Correction syntaxique : utilisation de client_ia.models.generate_content
             reponse = client_ia.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
@@ -98,10 +100,9 @@ if st.session_state.simulation_faite:
             else:
                 return "Erreur : Le contenu retourné par l'IA est vide."
         except Exception as e:
-            # Affiche l'erreur réelle dans Streamlit pour vous aider à déboguer
             return f"Erreur technique de l'API Gemini : {str(e)}"
 
-    # Fonction de création du PDF enrichie avec design professionnel
+    # Fonction de création du PDF ReportLab
     def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         from io import BytesIO
         from reportlab.lib.pagesizes import letter
@@ -125,15 +126,15 @@ if st.session_state.simulation_faite:
         story.append(Paragraph("Document d'orientation stratégique édité par Intelligence Artificielle", style_sous_titre))
         story.append(Spacer(1, 10))
         
-        # Tableau récapitulatif des données du client (Fait très professionnel)
-        donnies_table = [
+        # Tableau récapitulatif
+        donnees_table = [
             [Paragraph("<b>Métrique Patrimoniale</b>", style_corps), Paragraph("<b>Valeur renseignée</b>", style_corps)],
             ["Âge de l'investisseur", f"{age} ans"],
             ["Patrimoine initial", f"{patrimoine:,.0f} €".replace(',', ' ')],
             ["Effort d'épargne mensuel", f"{epargne} € / mois"],
             ["Objectif de rendement ciblé", f"{rendement} % par an"]
         ]
-        t = Table(donnies_table, colWidths=[250, 200])
+        t = Table(donnees_table, colWidths=[200, 200])
         t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (1,0), colors.HexColor('#F1F5F9')),
             ('TEXTCOLOR', (0,0), (1,0), colors.HexColor('#004B87')),
@@ -144,14 +145,13 @@ if st.session_state.simulation_faite:
         story.append(t)
         story.append(Spacer(1, 20))
         
-        # Injection du texte de l'IA avec structure
+        # Injection du texte de l'IA
         paragraphes = texte_ia.split('\n')
         for para in paragraphes:
             txt = para.strip()
             if not txt:
                 continue
             
-            # Si la ligne ressemble à un titre de partie, on applique le style Section
             if "PARTIE" in txt or "STRATÉGIE" in txt or "GESTION" in txt or "ALLOCATION" in txt:
                 story.append(Paragraph(txt, style_section))
             else:
@@ -161,17 +161,15 @@ if st.session_state.simulation_faite:
         pdf_buffer.seek(0)
         return pdf_buffer.getvalue()
 
-    # Exécution du processus
+    # Exécution du processus (toujours indenté dans le "if")
     with st.spinner("Analyse des marchés et génération de votre rapport complet..."):
         texte_rapport = generer_analyse_ia(age, patrimoine_actuel, epargne_mensuelle, Rendement)
         pdf_data = creer_pdf(texte_rapport, age, patrimoine_actuel, epargne_mensuelle, Rendement)
 
-    # Bouton de téléchargement
+    # Bouton de téléchargement (toujours indenté dans le "if")
     st.download_button(
         label="⬇️ Télécharger l'Audit Patrimonial Complet (PDF)",
         data=pdf_data,
         file_name=f"Audit_Patrimonial_{age}ans.pdf",
         mime="application/pdf"
     )
-
-    
