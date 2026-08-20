@@ -4,14 +4,15 @@ import numpy as np
 from io import BytesIO
 from google import genai
 
-# 1. CONFIGURATION DE LA PAGE (Doit impérativement être la première commande Streamlit)
+# 1. CONFIGURATION DE LA PAGE
 st.set_page_config(page_title="Cabinet Digital", layout="wide")
 
 # 2. INITIALISATION DES ÉTATS DE SESSION
 if "sim_ok" not in st.session_state: st.session_state.sim_ok = False
 if "pay_ok" not in st.session_state: st.session_state.pay_ok = False
+if "pdf_pret" not in st.session_state: st.session_state.pdf_pret = None
 
-# 3. RÉCUPÉRATION SÉCURISÉE DES ACCÈS API GEMINI
+# 3. ACCÈS SÉCURISÉ API GEMINI
 try:
     CLE_API = st.secrets["GEMINI_API_KEY"]
     client_ia = genai.Client(api_key=CLE_API)
@@ -19,9 +20,9 @@ except Exception as e:
     st.error(f"Erreur technique de clé API : {e}")
     st.stop()
 
-# 4. FONCTIONS GLOBALES DE CALCUL ET GÉNÉRATION PDF
+# 4. FONCTIONS DE GÉNÉRATION DU RAPPORT
 def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
-    prompt = f"Rédige un rapport patrimonial dense et complet pour un client de {age} ans ayant {patrimoine} euros de capital et {epargne} euros d'épargne. Crée trois grands chapitres : PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION, PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION, PARTIE 3 : ALLOCATION DE CAPITAL RECOMMANDÉE. Écris de longs paragraphes détaillés. Rédige uniquement en texte brut sans dièses ni étoiles."
+    prompt = f"Rédige un rapport patrimonial dense et complet pour un client de {age} ans ayant {patrimoine} euros de capital et {epargne} euros d'épargne. Crée trois grands chapitres textuels : PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION, PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION, PARTIE 3 : ALLOCATION DE CAPITAL RECOMMANDÉE. Rédige uniquement en texte brut sans dièses ni étoiles."
     try:
         reponse = client_ia_instance.models.generate_content(
             model="gemini-3.6-flash",
@@ -55,18 +56,16 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     # PAGE 2 : SOMMAIRE
     story.append(Paragraph("SOMMAIRE EXÉCUTIF", style_section))
     sommaire_data = [["1. Profil", "Page 3"], ["2. Projections", "Page 4"], ["3. IA", "Page 6"], ["4. Annexes", "Page 12"], ["5. Signatures", "Page 15"]]
-    st_table = Table(sommaire_data, colWidths=[350, 100])
+    st_table = Table(sommaire_data, colWidths=[400, 100])
     st_table.setStyle(TableStyle([('BOTTOMPADDING', (0,0), (-1,-1), 8), ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.HexColor('#F1F5F9'))]))
-    story.append(st_table)
-    story.append(PageBreak())
+    story.append(st_table); story.append(PageBreak())
 
     # PAGE 3 : SYNTHÈSE
     story.append(Paragraph("1. Synthèse du profil", style_section))
     donnees_table = [["Métrique", "Valeur"], ["Âge", f"{age} ans"], ["Patrimoine", f"{patrimoine:,.0f} €"], ["Épargne", f"{epargne} €/mois"]]
-    t = Table(donnees_table, colWidths=[225, 225])
+    t = Table(donnees_table, colWidths=[250, 250])
     t.setStyle(TableStyle([('BACKGROUND', (0,0), (1,0), colors.HexColor('#F1F5F9')), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0'))]))
-    story.append(t)
-    story.append(PageBreak())
+    story.append(t); story.append(PageBreak())
 
     # PAGES 4 & 5 : TABLEAU FINANCIER D'ÉVOLUTION SUR 20 ANS
     story.append(Paragraph("2. Projections financières", style_section))
@@ -78,17 +77,16 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         table_finance_data.append([f"Année {an}", f"{cap_courant:,.0f} €", f"{(epargne*12):,.0f} €", f"{interets:,.0f} €", f"{cap_final:,.0f} €"])
         cap_courant = cap_final
 
-    t_fin1 = Table(table_finance_data[:12], colWidths=[60, 95, 95, 95, 105])
-    t_fin1.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]), ('FONTSIZE', (0,0), (-1,-1), 9), ('BOTTOMPADDING', (0,0), (-1,-1), 5)]))
-    story.append(t_fin1)
-    story.append(PageBreak())
+    t_fin1 = Table(table_finance_data[:12], colWidths=[80, 105, 105, 105, 105])
+    t_fin1.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]), ('FONTSIZE', (0,0), (-1,-1), 9)]))
+    story.append(t_fin1); story.append(PageBreak())
     
     story.append(Paragraph("2. Projections financières (Suite)", style_section))
-    t_fin2 = Table([table_finance_data[0]] + table_finance_data[12:], colWidths=[60, 95, 95, 95, 105])
-    t_fin2.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]), ('FONTSIZE', (0,0), (-1,-1), 9), ('BOTTOMPADDING', (0,0), (-1,-1), 5)]))
+    t_fin2 = Table([table_finance_data[0]] + table_finance_data[12:], colWidths=[80, 105, 105, 105, 105])
+    t_fin2.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]), ('FONTSIZE', (0,0), (-1,-1), 9)]))
     story.append(t_fin2)
 
-    # PAGES 6 À 11 : INTÉGRATION DU TEXTE DE L'IA GEMINI
+    # PAGES 6 À 11 : INTEGRATION RAPPORT DE L'IA
     paragraphes = texte_ia.split('\n')
     for para in paragraphes:
         txt = para.strip()
@@ -123,7 +121,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         [Paragraph("**Signature de l'Expert IA**", style_corps), Paragraph("**Signature du Client**", style_corps)],
         ["Cabinet Digital Patrimoine\nDocument certifié conforme", "Bon pour accord et validation\ndes choix stratégiques"]
     ]
-    sig_table = Table(signature_data, colWidths=[225, 225])
+    sig_table = Table(signature_data, colWidths=[250, 250])
     sig_table.setStyle(TableStyle([('LINEABOVE', (0,0), (-1,0), 0.5, colors.HexColor('#94A3B8')), ('TOPPADDING', (0,0), (-1,-1), 10), ('BOTTOMPADDING', (0,0), (-1,-1), 40)]))
     story.append(sig_table)
 
@@ -131,7 +129,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     pdf_buffer.seek(0)
     return pdf_buffer.getvalue()
 
-# 5. INTERFACE UTILISATEUR (STREAMLIT)
+# 5. INTERFACE STRUTURÉE SANS INTERRUPTION (STREAMLIT)
 st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
 col_inputs, col_graph = st.columns(2)
 
@@ -140,15 +138,14 @@ with col_inputs:
     patrimoine_actuel = st.number_input("Patrimoine actuel (€)", min_value=0, value=50000)
     epargne_mensuelle = st.number_input("Épargne mensuelle (€)", min_value=0, value=300)
     Rendement = st.slider("Hypothèse de rendement annuel (%)", 1.0, 10.0, 4.0)
-
     if st.button("🧮 Calculer mes projections gratuitement"):
         st.session_state.sim_ok = True
+        st.session_state.pdf_pret = None
 
 with col_graph:
     if st.session_state.sim_ok:
         annees = np.arange(0, 21)
         capital = patrimoine_actuel * ((1 + Rendement/100) ** annees) + (epargne_mensuelle * 12) * ((1 + Rendement/100) ** annees - 1) / (Rendement/100)
-        
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=annees, y=capital, mode='lines+markers', name='Votre projection', line=dict(color='#004B87')))
         fig.update_layout(title="Évolution de votre capital", xaxis_title="Années", yaxis_title="Capital (€)")
@@ -156,7 +153,7 @@ with col_graph:
     else:
         st.info("Remplissez les informations à gauche pour voir votre graphique de projection.")
 
-# ÉTAPE 2 : LE VERROU COMMERCIAL
+# --- ÉTAPE 2 : LE VERROU PAYANT ---
 if st.session_state.sim_ok:
     st.markdown("---")
     st.markdown("### 🔒 Étape 2 : Obtenez votre Audit Certifié complet (15 pages)")
@@ -168,10 +165,14 @@ if st.session_state.sim_ok:
         if st.button("💳 Débloquer mon Audit PDF Complet (19 €)"): 
             st.session_state.pay_ok = True
 
-# ÉTAPE 3 : BLOC DE TÉLÉCHARGEMENT DIRECT
+# --- ÉTAPE 3 : BLOC DE TÉLÉCHARGEMENT DIRECT ---
 if st.session_state.pay_ok:
     st.markdown("---")
     st.success("✅ Paiement validé ! Votre rapport de 15 pages est assemblé.")
+    
+    if st.session_state.pdf_pret is None:
+
+
     
 
 
