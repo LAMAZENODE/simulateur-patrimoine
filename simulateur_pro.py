@@ -4,10 +4,24 @@ import numpy as np
 from io import BytesIO
 from google import genai
 
-# 1. CONFIGURATION DE LA PAGE
+# 1. CONFIGURATION DE LA PAGE (Doit obligatoirement être la première commande Streamlit)
 st.set_page_config(page_title="Cabinet Digital - Optimisation Patrimoniale", page_icon="🛡️", layout="wide")
 
-# 2. INITIALISATION DES ÉTATS DE SESSION
+# Style CSS pour un rendu haut de gamme et harmonieux
+st.markdown("""
+    <style>
+    .stButton>button {
+        background-color: #004B87 !important;
+        color: white !important;
+        font-weight: bold !important;
+        font-size: 16px !important;
+        border-radius: 8px !important;
+        padding: 10px 20px !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# 2. INITIALISATION UNIQUE DES ÉTATS DE SESSION
 if "simulation_faite" not in st.session_state:
     st.session_state.simulation_faite = False
 if "paiement_pdf_ok" not in st.session_state:
@@ -23,7 +37,7 @@ except Exception as e:
     st.error(f"Erreur de configuration technique d'API : {e}")
     st.stop()
 
-# 4. FONCTIONS GLOBALES DE CALCUL AND GÉNÉRATION PDF
+# 4. DEUX FONCTIONS GLOBALES (NIVEAU D'INDENTATION 0 : AUCUN RISQUE DE PLANTAGE)
 def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
     prompt = f"En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé pour un client de {age} ans ayant {patrimoine} euros de capital et {epargne} euros d'épargne mensuelle. Rédige trois grandes parties distinctes : PARTIE 1 : STRATÉGIE FISCALE D'OPTIMISATION, PARTIE 2 : GESTION DES RISQUES ET SÉCURISATION, PARTIE 3 : ALLOCATION DE CAPITAL RECOMMANDÉE. N'utilise aucun caractère markdown comme des étoiles ou des dièses."
     try:
@@ -79,7 +93,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     # PAGES 4 & 5 : TABLEAU COMPTABLE DYNAMIQUE SUR 20 ANS
     story.append(Paragraph("2. Tableau d'évolution de l'épargne capitalisée", style_section))
     table_finance_data = [[Paragraph("<b>Année</b>", style_corps), Paragraph("<b>Capital initial</b>", style_corps), Paragraph("<b>Épargne versée</b>", style_corps), Paragraph("<b>Intérêts générés</b>", style_corps), Paragraph("<b>Capital Final</b>", style_corps)]]
-    cap_courant = patrimonio_actuel = patrimoine
+    cap_courant = patrimonio = patrimoine
     for an in range(1, 21):
         interets = (cap_courant + (epargne * 12) / 2) * (rendement / 100)
         cap_final = cap_courant + (epargne * 12) + interets
@@ -116,7 +130,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     # PAGES 12 À 14 : GUIDE DES 5 ANNEXES POUR ATTEINDRE LES 15 PAGES
     annexes_pro = [
         ("A", "L'Assurance-Vie et la capitalisation", "L'optimisation globale implique l'usage de cette enveloppe pour capitaliser les intérêts sur le long terme à l'abri de l'impôt de base. Les retraits après 8 ans bénéficient d'abattements fiscaux annuels très avantageux."),
-        ("B", "Le PEA (Plan d'Épargne en Actions)", "Le PEA est une enveloppe idéale pour dynamiser votre capital sur les marchés européens. Après 5 ans de détention, l'intégralité des gains et dividendes est exonérée d'impôt sur le revenu."),
+        ("B", "Le PEA (Plan d'Épargne en Actions)", "Le PEA écoresponsable est une enveloppe idéale pour dynamiser votre capital sur les marchés européens. Après 5 ans de détention, l'intégralité des gains et dividendes est exonérée d'impôt sur le revenu."),
         ("C", "Le PER (Plan d'Épargne Retraite)", "Le PER offre un levier fiscal immédiat en vous permettant de déduire vos versements de votre revenu imposable. C'est l'outil parfait pour transformer votre impôt en capital pour l'avenir."),
         ("D", "L'Immobilier de Rendement (Pierre-Papier / SCPI)", "Les Sociétés Civiles de Placement Immobilier permettent d'investir dans l'immobilier tertiaire dès quelques centaines d'euros. Elles distribuent des revenus réguliers sous forme de loyers sans aucune contrainte de gestion."),
         ("E", "La Transmission et l'Optimisation Successorale", "Anticiper la transmission de son patrimoine est essentiel pour protéger ses proches. L'utilisation conjointe de l'assurance-vie et des donations permet de réduire drastiquement les futurs droits de succession.")
@@ -136,17 +150,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
 
     signature_data = [
         [Paragraph("**Signature de l'Expert IA**", style_corps), Paragraph("**Signature du Client**", style_corps)],
-        ["Cabinet Digital Patrimoine\nDocument certifié conforme", "Bon pour accord et validation\ndes choix stratégiques"]
-    ]
-    sig_table = Table(signature_data, colWidths=[250, 250])
-    sig_table.setStyle(TableStyle([('LINEABOVE', (0,0), (-1,0), 0.5, colors.HexColor('#94A3B8')), ('TOPPADDING', (0,0), (-1,-1), 10), ('BOTTOMPADDING', (0,0), (-1,-1), 40)]))
-    story.append(sig_table)
 
-    doc.build(story)
-    pdf_buffer.seek(0)
-    return pdf_buffer.getvalue()
-
-# 5. INTERFACE UTILISATEUR (STREAMLIT)
 
 
 
