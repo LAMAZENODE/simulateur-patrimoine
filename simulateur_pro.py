@@ -23,7 +23,7 @@ except Exception as e:
     st.error(f"Erreur de configuration technique d'API : {e}")
     st.stop()
 
-# 4. Fonctions globales de calcul et génération (Placées en haut pour éviter les NameError)
+# 4. Fonctions globales de calcul et génération (Placées en haut)
 def generer_analyse_ia(client_ia_instance, age, patrimoine, epargne, rendement):
     prompt = f"""
     En tant qu'expert en gestion de patrimoine, rédige un rapport d'audit détaillé, sérieux et haut de gamme.
@@ -83,7 +83,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     story.append(t)
     story.append(PageBreak())
 
-    # PAGES 4 & 5 : TABLEAU COMPTABLE DYNAMIQUE SUR 20 ANS
+    # PAGES 4 & 5 : TABLEAU COMPTABLE SUR 20 ANS
     story.append(Paragraph("2. Tableau d'évolution de l'épargne capitalisée", style_section))
     table_finance_data = [[Paragraph("<b>Année</b>", style_corps), Paragraph("<b>Capital initial</b>", style_corps), Paragraph("<b>Épargne versée</b>", style_corps), Paragraph("<b>Intérêts générés</b>", style_corps), Paragraph("<b>Capital Final</b>", style_corps)]]
     cap_courant = patrimoine
@@ -103,7 +103,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     t_fin2.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#004B87')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1'))]))
     story.append(t_fin2)
 
-    # PAGES 6 À 11 : INTEGRATION DU RAPPORT TEXTUEL DE L'IA
+    # PAGES 6 À 11 : INTÉGRATION DU TEXTE IA
     paragraphes = texte_ia.split('\n')
     for para in paragraphes:
         txt = para.strip()
@@ -120,14 +120,14 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
         else:
             story.append(Paragraph(txt, style_corps))
 
-    # PAGES 12 À 14 : GUIDES FISCAUX PEDAGOGIQUES
+    # PAGES 12 À 14 : ANNEXES FISCAUX PÉDAGOGIQUES
     for lettre, titre in [("A", "L'Assurance-Vie"), ("B", "Le PEA"), ("C", "Le PER")]:
         story.append(PageBreak())
         story.append(Paragraph(f"4. Annexe {lettre} : Guide sur {titre}", style_section))
         story.append(Paragraph("L'optimisation globale implique l'usage de cette enveloppe pour capitaliser les intérêts sur le long terme à l'abri de l'impôt de base.", style_corps))
         story.append(Paragraph("Les prélèvements sociaux s'appliquent uniquement au moment du débouclage ou lors des rachats partiels effectués par le souscripteur.", style_corps))
 
-    # PAGE 15 : CLAUSES LEGALES ET EMPLACEMENT DE SIGNATURE
+    # PAGE 15 : LÉGAL & SIGNATURES
     story.append(PageBreak())
     story.append(Paragraph("5. Mentions Légales et Signatures", style_section))
     story.append(Paragraph("Ce document indicatif est généré automatiquement par IA. Tout investissement comporte un risque de perte en capital.", style_corps))
@@ -146,11 +146,7 @@ def creer_pdf(texte_ia, age, patrimoine, epargne, rendement):
     return pdf_buffer.getvalue()
 
 
-# 5. Interface Graphique Principale (Streamlit)
-st.title("Intelligence Artificielle & Expertise Patrimoniale")
-st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
-
-# --- ÉTAPE 1 : LA SIMULATION GRATUITE ---
+# 5. Interface Graphique Streamlit
 st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
 col_inputs, col_graph = st.columns(2)
 
@@ -162,7 +158,7 @@ with col_inputs:
 
     if st.button("🧮 Calculer mes projections gratuitement"):
         st.session_state.simulation_faite = True
-        st.session_state.pdf_pret = None # Réinitialise pour recalculer si les chiffres changent
+        st.session_state.pdf_pret = None # Force la régénération si les chiffres changent
 
 with col_graph:
     if st.session_state.simulation_faite:
@@ -171,6 +167,13 @@ with col_graph:
         
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=annees, y=capital, mode='lines+markers', name='Votre projection', line=dict(color='#004B87')))
+        fig.update_layout(title="Évolution estimée de votre patrimoine", xaxis_title="Années", yaxis_title="Capital (€)")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Remplissez les informations à gauche pour voir votre graphique de projection.")
+
+# --- ÉTAPE 2 : OFFRE COMMERCIALE ---
+
 
 
 
