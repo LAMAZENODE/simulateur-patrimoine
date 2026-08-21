@@ -4,6 +4,7 @@ import numpy as np
 from io import BytesIO
 import stripe
 from datetime import datetime
+import webbrowser
 
 # Configuration de Stripe - À MODIFIER AVEC VOS VRAIES CLÉS
 STRIPE_SECRET_KEY = st.secrets.get("STRIPE_SECRET_KEY", "")
@@ -11,8 +12,6 @@ STRIPE_PUBLISHABLE_KEY = st.secrets.get("STRIPE_PUBLISHABLE_KEY", "")
 PRICE_ID = st.secrets.get("STRIPE_PRICE_ID", "")
 
 # URL DE VOTRE APPLICATION - À MODIFIER !
-# Pour Streamlit Cloud : "https://votre-app.streamlit.app"
-# Pour localhost : "http://localhost:8501"
 APP_URL = st.secrets.get("APP_URL", "http://localhost:8501")
 
 # Initialiser Stripe si configuré
@@ -28,6 +27,8 @@ if "verification_faite" not in st.session_state:
     st.session_state.verification_faite = False
 if "donnees_client" not in st.session_state:
     st.session_state.donnees_client = {}
+if "stripe_url" not in st.session_state:
+    st.session_state.stripe_url = None
 
 st.title("Intelligence Artificielle & Expertise Patrimoniale")
 st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
@@ -94,7 +95,7 @@ if st.session_state.simulation_faite:
                 st.success("✅ Mode démo activé ! Votre rapport est prêt.")
                 st.rerun()
         else:
-            # Fonction pour créer une session Stripe Checkout avec URL fixe
+            # Fonction pour créer une session Stripe Checkout
             def create_checkout_session(age, patrimoine, epargne, rendement):
                 try:
                     # Utiliser une URL fixe et valide
@@ -122,19 +123,45 @@ if st.session_state.simulation_faite:
                     st.error(f"Erreur Stripe: {str(e)}")
                     return None
             
+            # Afficher le bouton de paiement
             if st.button("💳 Payer 19€ et télécharger mon Audit", use_container_width=True):
                 url = create_checkout_session(age, patrimoine_actuel, epargne_mensuelle, Rendement)
                 if url:
-                    # Rediriger vers Stripe Checkout
-                    st.markdown(f"""
-                        <meta http-equiv="refresh" content="0;url={url}">
-                        <div style="text-align: center; padding: 50px;">
-                            <h3>🔄 Redirection vers Stripe en cours...</h3>
-                            <p>Si la redirection ne fonctionne pas, <a href="{url}" target="_blank">cliquez ici</a></p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.error("Erreur lors de la création de la session de paiement")
+                    st.session_state.stripe_url = url
+                    st.rerun()
+            
+            # Si une URL Stripe est disponible, l'ouvrir dans une nouvelle fenêtre
+            if st.session_state.stripe_url:
+                st.markdown(f"""
+                <div style="text-align: center; padding: 30px; background-color: #f0f8ff; border-radius: 10px; margin: 20px 0;">
+                    <h3>🔄 Redirection vers Stripe</h3>
+                    <p>Cliquez sur le bouton ci-dessous pour effectuer votre paiement sécurisé.</p>
+                    <a href="{st.session_state.stripe_url}" target="_blank" style="
+                        display: inline-block;
+                        padding: 15px 40px;
+                        background-color: #635bff;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 5px;
+                        font-size: 18px;
+                        font-weight: bold;
+                        margin: 10px 0;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    ">
+                        💳 Payer 19€ sur Stripe
+                    </a>
+                    <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                        🔒 Paiement sécurisé par Stripe - Vos données bancaires ne sont pas stockées
+                    </p>
+                    <p style="font-size: 14px; color: #999;">
+                        Une nouvelle fenêtre va s'ouvrir pour le paiement. Revenez ici après avoir payé.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Ajouter un bouton pour réinitialiser
+                if st.button("🔄 J'ai déjà payé, vérifier mon paiement"):
+                    st.rerun()
 
     # Vérification du paiement Stripe
     if not st.session_state.paiement_reussi and not st.session_state.verification_faite:
@@ -142,19 +169,22 @@ if st.session_state.simulation_faite:
         if "session_id" in query_params:
             session_id = query_params["session_id"]
             try:
-                session = stripe.checkout.Session.retrieve(session_id)
-                if session.payment_status == "paid":
-                    st.session_state.paiement_reussi = True
-                    st.session_state.verification_faite = True
-                    if session.metadata:
-                        st.session_state.donnees_client = {
-                            "age": int(session.metadata.get("age", 35)),
-                            "patrimoine": float(session.metadata.get("patrimoine", 50000)),
-                            "epargne": float(session.metadata.get("epargne", 300)),
-                            "rendement": float(session.metadata.get("rendement", 4.0))
-                        }
-                    st.success("✅ Paiement validé ! Votre rapport est prêt.")
-                    st.rerun()
+                with st.spinner("Vérification du paiement en cours..."):
+                    session = stripe.checkout.Session.retrieve(session_id)
+                    if session.payment_status == "paid":
+                        st.session_state.paiement_reussi = True
+                        st.session_state.verification_faite = True
+                        if session.metadata:
+                            st.session_state.donnees_client = {
+                                "age": int(session.metadata.get("age", 35)),
+                                "patrimoine": float(session.metadata.get("patrimoine", 50000)),
+                                "epargne": float(session.metadata.get("epargne", 300)),
+                                "rendement": float(session.metadata.get("rendement", 4.0))
+                            }
+                        st.success("✅ Paiement validé ! Votre rapport est prêt.")
+                        st.rerun()
+                    else:
+                        st.warning("⏳ En attente de validation du paiement...")
             except Exception as e:
                 st.error(f"Erreur de vérification: {str(e)}")
                 st.session_state.verification_faite = True
@@ -606,10 +636,24 @@ if st.session_state.paiement_reussi:
     )
     
     st.success("✅ Votre rapport est prêt ! Il contient 15 pages d'analyses détaillées.")
+    
+    # Afficher un récapitulatif
+    with st.expander("📋 Récapitulatif de votre rapport"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Âge", f"{age_client} ans")
+        with col2:
+            st.metric("Patrimoine initial", f"{patrimoine_client:,.0f} €")
+        with col3:
+            st.metric("Épargne mensuelle", f"{epargne_client} €")
+        
+        projection_20 = patrimoine_client * ((1 + rendement_client/100) ** 20) + (epargne_client * 12) * ((1 + rendement_client/100) ** 20 - 1) / (rendement_client/100)
+        st.metric("📈 Patrimoine projeté à 20 ans", f"{projection_20:,.0f} €", delta=f"x{(projection_20/patrimoine_client):.1f}")
 
 else:
     if st.session_state.simulation_faite:
         st.info("💳 Effectuez le paiement pour accéder à votre rapport complet de 15 pages.")
+
 
 
 
