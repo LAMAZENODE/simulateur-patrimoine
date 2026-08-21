@@ -72,27 +72,31 @@ if st.session_state.paiement_pdf_ok:
         projection_20 = patrimoine * ((1 + rendement/100) ** 20) + (epargne * 12) * ((1 + rendement/100) ** 20 - 1) / (rendement/100)
         projection_10 = patrimoine * ((1 + rendement/100) ** 10) + (epargne * 12) * ((1 + rendement/100) ** 10 - 1) / (rendement/100)
         
+        # Fonction pour formater les nombres sans virgule
+        def fmt(n):
+            return f"{n:,.0f}".replace(",", " ")
+        
         contenu = f"""
         PARTIE 1 : ANALYSE APPROFONDIE DE LA SITUATION PATRIMONIALE ACTUELLE
 
         1.1 Diagnostic financier complet
-        À l'âge de {age} ans, vous disposez d'un patrimoine initial de {patrimoine:,.0f} €. Cette situation vous place dans une catégorie d'investisseur avec un potentiel de croissance significatif sur un horizon de 20 ans. Votre capacité d'épargne mensuelle de {epargne} € représente un effort d'épargne soutenable qui, bien investi, peut générer une richesse considérable à long terme.
+        À l'âge de {age} ans, vous disposez d'un patrimoine initial de {fmt(patrimoine)} euros. Cette situation vous place dans une catégorie d'investisseur avec un potentiel de croissance significatif sur un horizon de 20 ans. Votre capacité d'épargne mensuelle de {epargne} euros représente un effort d'épargne soutenable qui, bien investi, peut générer une richesse considérable à long terme.
 
         1.2 Analyse du ratio d'épargne
-        Le ratio d'épargne de {epargne*12/patrimoine*100:.1f}% par rapport à votre patrimoine actuel est un indicateur clé de votre capacité à accumuler de la richesse. Comparé à la moyenne nationale française qui se situe autour de 15%, votre situation est { 'supérieure' if epargne*12/patrimoine*100 > 15 else 'inférieure' } à la moyenne.
+        Le ratio d'épargne de {(epargne*12/patrimoine*100):.1f}% par rapport à votre patrimoine actuel est un indicateur clé de votre capacité à accumuler de la richesse. Comparé à la moyenne nationale française qui se situe autour de 15%, votre situation est {'supérieure' if epargne*12/patrimoine*100 > 15 else 'inférieure'} à la moyenne.
 
         1.3 Projection sur 10 ans (point intermédiaire)
-        À 10 ans, avec une hypothèse de rendement de {rendement}%, votre patrimoine pourrait atteindre environ {projection_10:,.0f} €. Ce jalon intermédiaire est crucial pour évaluer la pertinence de votre stratégie d'investissement.
+        À 10 ans, avec une hypothèse de rendement de {rendement}%, votre patrimoine pourrait atteindre environ {fmt(projection_10)} euros. Ce jalon intermédiaire est crucial pour évaluer la pertinence de votre stratégie d'investissement.
 
         1.4 Projection à 20 ans (objectif final)
-        À 20 ans, votre patrimoine projeté s'élèverait à {projection_20:,.0f} €, soit une multiplication par {projection_20/patrimoine:.1f} de votre capital initial. Cette projection prend en compte la capitalisation des intérêts composés, véritable moteur de la création de richesse à long terme.
+        À 20 ans, votre patrimoine projeté s'élèverait à {fmt(projection_20)} euros, soit une multiplication par {(projection_20/patrimoine):.1f} de votre capital initial. Cette projection prend en compte la capitalisation des intérêts composés, véritable moteur de la création de richesse à long terme.
 
         PARTIE 2 : STRATÉGIE D'OPTIMISATION FISCALE EXHAUSTIVE
 
         2.1 L'Assurance-Vie : l'enveloppe fiscale par excellence
         L'Assurance-Vie constitue le socle de toute stratégie patrimoniale moderne. Ses avantages fiscaux sont multiples :
-        - Après 8 ans de détention, l'abattement annuel sur les rachats s'élève à 4 600 € pour une personne seule et 9 200 € pour un couple
-        - La transmission bénéficie d'une exonération de droits de succession jusqu'à 152 500 € par bénéficiaire pour les versements avant 70 ans
+        - Après 8 ans de détention, l'abattement annuel sur les rachats s'élève à 4 600 euros pour une personne seule et 9 200 euros pour un couple
+        - La transmission bénéficie d'une exonération de droits de succession jusqu'à 152 500 euros par bénéficiaire pour les versements avant 70 ans
         - Les intérêts capitalisés sont en report d'imposition, permettant une croissance sans frottement fiscal
 
         Pour votre profil de {age} ans, voici la stratégie optimale :
@@ -102,19 +106,19 @@ if st.session_state.paiement_pdf_ok:
 
         2.2 Le PEA (Plan d'Épargne en Actions) : l'outil de croissance
         Le PEA est l'instrument idéal pour investir en actions européennes. Ses atouts :
-        - Plafond de versement : 150 000 €
+        - Plafond de versement : 150 000 euros
         - Exonération totale d'impôt sur le revenu après 5 ans
         - Seuls les prélèvements sociaux (17.2%) s'appliquent
 
         Stratégie PEA recommandée :
         - Versement initial : 30% de votre capacité d'investissement
-        - DCA (Dollar Cost Averaging) : versements mensuels de {epargne*0.4:.0f} €
+        - DCA (Dollar Cost Averaging) : versements mensuels de {(epargne*0.4):.0f} euros
         - Répartition : 60% en ETF MSCI World, 40% en actions européennes sélectionnées
 
         2.3 Le PER (Plan d'Épargne Retraite) : l'avantage fiscal immédiat
-        Le PER offre une déduction fiscale significative sur vos revenus. Pour un TMI de 30%, chaque versement de 1 000 € ne vous coûte que 700 € nets.
+        Le PER offre une déduction fiscale significative sur vos revenus. Pour un TMI de 30%, chaque versement de 1 000 euros ne vous coûte que 700 euros nets.
 
-        - Versement annuel optimal : {min(epargne*12*0.3, 3000):.0f} €
+        - Versement annuel optimal : {min(epargne*12*0.3, 3000):.0f} euros
         - Répartition suggérée : 50% en actions, 30% en diversifié, 20% en monétaire
         - Sortie en rente pour bénéficier d'une fiscalité avantageuse
 
@@ -127,7 +131,7 @@ if st.session_state.paiement_pdf_ok:
         PARTIE 3 : GESTION DES RISQUES ET SÉCURISATION DU PATRIMOINE
 
         3.1 Analyse des risques du portefeuille actuel
-        Votre patrimoine actuel de {patrimoine:,.0f} € est exposé à plusieurs risques :
+        Votre patrimoine actuel de {fmt(patrimoine)} euros est exposé à plusieurs risques :
         - Risque d'inflation : érode le pouvoir d'achat de l'épargne non investie
         - Risque de marché : volatilité des actifs financiers
         - Risque de liquidité : immobilisation éventuelle du capital
@@ -157,10 +161,10 @@ if st.session_state.paiement_pdf_ok:
         4.1 Répartition stratégique globale
         Classe d'actifs           | Pourcentage | Montant estimé | Rendement attendu
         --------------------------|-------------|----------------|------------------
-        Actions                   | 40%         | {patrimoine*0.4:,.0f} €    | {rendement*1.2:.1f}%
-        Obligations/Assurance-Vie | 30%         | {patrimoine*0.3:,.0f} €    | {rendement*0.7:.1f}%
-        Immobilier (SCPI)         | 20%         | {patrimoine*0.2:,.0f} €    | {rendement*0.9:.1f}%
-        Liquidités/Sécurité       | 10%         | {patrimoine*0.1:,.0f} €    | 2.0%
+        Actions                   | 40%         | {fmt(patrimoine*0.4)} euros    | {(rendement*1.2):.1f}%
+        Obligations/Assurance-Vie | 30%         | {fmt(patrimoine*0.3)} euros    | {(rendement*0.7):.1f}%
+        Immobilier (SCPI)         | 20%         | {fmt(patrimoine*0.2)} euros    | {(rendement*0.9):.1f}%
+        Liquidités/Sécurité       | 10%         | {fmt(patrimoine*0.1)} euros    | 2.0%
 
         4.2 Détail de la poche Actions
         - 50% en ETF MSCI World (exposition aux grandes capitalisations mondiales)
@@ -194,9 +198,9 @@ if st.session_state.paiement_pdf_ok:
         - Phase 3 : Acquisition d'une résidence principale avec optimisation du crédit
 
         5.4 Simulation de rentabilité
-        Pour un investissement de {patrimoine*0.2:,.0f} € en SCPI :
-        - Rendement locatif annuel : {rendement*0.9:.1f}%
-        - Revenus annuels estimés : {patrimoine*0.2*rendement/100*0.9:.0f} €
+        Pour un investissement de {fmt(patrimoine*0.2)} euros en SCPI :
+        - Rendement locatif annuel : {(rendement*0.9):.1f}%
+        - Revenus annuels estimés : {fmt(patrimoine*0.2*rendement/100*0.9)} euros
         - Fiscalité réduite grâce à l'amortissement et aux charges
 
         PARTIE 6 : PLANIFICATION DE LA RETRAITE SUR 20 ANS
@@ -204,16 +208,16 @@ if st.session_state.paiement_pdf_ok:
         6.1 Évolution du capital retraite
         Année | Âge | Capital estimé | Revenu complémentaire
         ------|-----|----------------|----------------------
-        0     | {age}  | {patrimoine:,.0f} €    | 0 €/mois
-        5     | {age+5}| {patrimoine * ((1 + rendement/100) ** 5) + (epargne * 12) * ((1 + rendement/100) ** 5 - 1) / (rendement/100):,.0f} € | {((patrimoine * ((1 + rendement/100) ** 5) + (epargne * 12) * ((1 + rendement/100) ** 5 - 1) / (rendement/100))*rendement/100/12):.0f} €
-        10    | {age+10}| {projection_10:,.0f} € | {(projection_10*rendement/100/12):.0f} €
-        15    | {age+15}| {patrimoine * ((1 + rendement/100) ** 15) + (epargne * 12) * ((1 + rendement/100) ** 15 - 1) / (rendement/100):,.0f} € | {(patrimoine * ((1 + rendement/100) ** 15) + (epargne * 12) * ((1 + rendement/100) ** 15 - 1) / (rendement/100)*rendement/100/12):.0f} €
-        20    | {age+20}| {projection_20:,.0f} € | {(projection_20*rendement/100/12):.0f} €
+        0     | {age}  | {fmt(patrimoine)} euros    | 0 euros/mois
+        5     | {age+5}| {fmt(patrimoine * ((1 + rendement/100) ** 5) + (epargne * 12) * ((1 + rendement/100) ** 5 - 1) / (rendement/100))} euros | {((patrimoine * ((1 + rendement/100) ** 5) + (epargne * 12) * ((1 + rendement/100) ** 5 - 1) / (rendement/100))*rendement/100/12):.0f} euros
+        10    | {age+10}| {fmt(projection_10)} euros | {((projection_10*rendement/100/12)):.0f} euros
+        15    | {age+15}| {fmt(patrimoine * ((1 + rendement/100) ** 15) + (epargne * 12) * ((1 + rendement/100) ** 15 - 1) / (rendement/100))} euros | {(patrimoine * ((1 + rendement/100) ** 15) + (epargne * 12) * ((1 + rendement/100) ** 15 - 1) / (rendement/100)*rendement/100/12):.0f} euros
+        20    | {age+20}| {fmt(projection_20)} euros | {((projection_20*rendement/100/12)):.0f} euros
 
         6.2 Stratégie de désépargne progressive
         À partir de l'âge de {age+20} ans, la stratégie évolue :
         - Taux de retrait annuel recommandé : 4% (rule of 4%)
-        - Revenu annuel complémentaire : environ {projection_20*0.04:,.0f} €
+        - Revenu annuel complémentaire : environ {fmt(projection_20*0.04)} euros
         - Objectif : maintenir le capital à long terme
 
         6.3 Optimisation de la fiscalité à la retraite
@@ -222,21 +226,21 @@ if st.session_state.paiement_pdf_ok:
         - Optimisation des tranches d'imposition
 
         6.4 Préparation des scénarios alternatifs
-        Scénario optimiste (+2% de rendement) : {patrimoine * ((1 + (rendement+2)/100) ** 20) + (epargne * 12) * ((1 + (rendement+2)/100) ** 20 - 1) / ((rendement+2)/100):,.0f} €
-        Scénario pessimiste (-2% de rendement) : {patrimoine * ((1 + (rendement-2)/100) ** 20) + (epargne * 12) * ((1 + (rendement-2)/100) ** 20 - 1) / ((rendement-2)/100):,.0f} €
+        Scénario optimiste (+2% de rendement) : {fmt(patrimoine * ((1 + (rendement+2)/100) ** 20) + (epargne * 12) * ((1 + (rendement+2)/100) ** 20 - 1) / ((rendement+2)/100))} euros
+        Scénario pessimiste (-2% de rendement) : {fmt(patrimoine * ((1 + (rendement-2)/100) ** 20) + (epargne * 12) * ((1 + (rendement-2)/100) ** 20 - 1) / ((rendement-2)/100))} euros
 
         PARTIE 7 : OPTIMISATION DE LA TRANSMISSION PATRIMONIALE
 
         7.1 Les outils de transmission avantageuse
-        - Donations au profit des enfants : abattement de 100 000 € tous les 15 ans
+        - Donations au profit des enfants : abattement de 100 000 euros tous les 15 ans
         - Pacte Dutreil : exonération partielle des droits de mutation pour les entreprises
-        - Assurance-Vie : transmission hors succession dans la limite de 152 500 € par bénéficiaire
+        - Assurance-Vie : transmission hors succession dans la limite de 152 500 euros par bénéficiaire
         - Démembrement de propriété : répartition usufruit/nue-propriété
 
         7.2 Stratégie de donation progressive
-        - À {age+5} ans : donation de {patrimoine*0.1:,.0f} € en nue-propriété
-        - À {age+10} ans : donation de {patrimoine*0.15:,.0f} € en nue-propriété
-        - À {age+15} ans : donation de {patrimoine*0.2:,.0f} € en nue-propriété
+        - À {age+5} ans : donation de {fmt(patrimoine*0.1)} euros en nue-propriété
+        - À {age+10} ans : donation de {fmt(patrimoine*0.15)} euros en nue-propriété
+        - À {age+15} ans : donation de {fmt(patrimoine*0.2)} euros en nue-propriété
         - À {age+20} ans : donation complémentaire pour optimiser la fiscalité
 
         7.3 Optimisation du couple fiscal
@@ -280,17 +284,17 @@ if st.session_state.paiement_pdf_ok:
         - Phase de reprise : réallocation progressive vers les actifs risqués
 
         8.4 Scénarios alternatifs
-        Scénario de croissance élevée : {patrimoine * ((1 + (rendement+3)/100) ** 20) + (epargne * 12) * ((1 + (rendement+3)/100) ** 20 - 1) / ((rendement+3)/100):,.0f} €
-        Scénario de croissance modérée : {patrimoine * ((1 + (rendement)/100) ** 20) + (epargne * 12) * ((1 + (rendement)/100) ** 20 - 1) / ((rendement)/100):,.0f} €
-        Scénario de récession : {patrimoine * ((1 + (rendement-3)/100) ** 20) + (epargne * 12) * ((1 + (rendement-3)/100) ** 20 - 1) / ((rendement-3)/100):,.0f} €
+        Scénario de croissance élevée : {fmt(patrimoine * ((1 + (rendement+3)/100) ** 20) + (epargne * 12) * ((1 + (rendement+3)/100) ** 20 - 1) / ((rendement+3)/100))} euros
+        Scénario de croissance modérée : {fmt(patrimoine * ((1 + (rendement)/100) ** 20) + (epargne * 12) * ((1 + (rendement)/100) ** 20 - 1) / ((rendement)/100))} euros
+        Scénario de récession : {fmt(patrimoine * ((1 + (rendement-3)/100) ** 20) + (epargne * 12) * ((1 + (rendement-3)/100) ** 20 - 1) / ((rendement-3)/100))} euros
 
         PARTIE 9 : STRATÉGIE D'ÉPARGNE DE PRÉCAUTION
 
         9.1 Constitution du matelas de sécurité
-        Objectif : {epargne*12*0.5:.0f} € (6 mois de salaire)
-        - Épargne via livret A : {epargne*12*0.3:.0f} €
-        - Épargne via LDDS : {epargne*12*0.2:.0f} €
-        - Épargne via compte à terme : {epargne*12*0.5:.0f} €
+        Objectif : {fmt(epargne*12*0.5)} euros (6 mois de salaire)
+        - Épargne via livret A : {fmt(epargne*12*0.3)} euros
+        - Épargne via LDDS : {fmt(epargne*12*0.2)} euros
+        - Épargne via compte à terme : {fmt(epargne*12*0.5)} euros
 
         9.2 Gestion des imprévus
         - Constitution d'une réserve pour travaux et réparations
@@ -311,9 +315,9 @@ if st.session_state.paiement_pdf_ok:
         PARTIE 10 : PLAN D'ACTION CONCRET ET DÉTAILLÉ
 
         10.1 Objectifs annuels chiffrés
-        Année 1 : Constitution du matelas de sécurité ({epargne*12*0.5:.0f} €)
-        Année 2 : Ouverture et première alimentation du PEA ({epargne*12*0.3:.0f} €)
-        Année 3 : Souscription à une Assurance-Vie ({epargne*12*0.4:.0f} €)
+        Année 1 : Constitution du matelas de sécurité ({fmt(epargne*12*0.5)} euros)
+        Année 2 : Ouverture et première alimentation du PEA ({fmt(epargne*12*0.3)} euros)
+        Année 3 : Souscription à une Assurance-Vie ({fmt(epargne*12*0.4)} euros)
         Année 4 : Premier investissement immobilier
         Année 5 : Réévaluation complète de la stratégie
 
@@ -346,9 +350,9 @@ if st.session_state.paiement_pdf_ok:
         5. Réévaluer annuellement la stratégie
 
         11.2 Objectifs à 5, 10 et 20 ans
-        - À 5 ans : Atteindre un patrimoine de {patrimoine * ((1 + rendement/100) ** 5) + (epargne * 12) * ((1 + rendement/100) ** 5 - 1) / (rendement/100):,.0f} €
-        - À 10 ans : Atteindre un patrimoine de {projection_10:,.0f} €
-        - À 20 ans : Atteindre un patrimoine de {projection_20:,.0f} €
+        - À 5 ans : Atteindre un patrimoine de {fmt(patrimoine * ((1 + rendement/100) ** 5) + (epargne * 12) * ((1 + rendement/100) ** 5 - 1) / (rendement/100))} euros
+        - À 10 ans : Atteindre un patrimoine de {fmt(projection_10)} euros
+        - À 20 ans : Atteindre un patrimoine de {fmt(projection_20)} euros
 
         11.3 Bénéfices attendus de la stratégie
         - Sécurité financière à long terme
@@ -367,7 +371,7 @@ if st.session_state.paiement_pdf_ok:
         ANNEXE 2 : TABLEAUX COMPARATIFS
         Enveloppe fiscale | Avantages | Inconvénients | Utilisation idéale
         ------------------|-----------|---------------|-------------------
-        PEA               | Exonération d'impôt après 5 ans | Plafond de 150 000 € | Actions long terme
+        PEA               | Exonération d'impôt après 5 ans | Plafond de 150 000 euros | Actions long terme
         Assurance-Vie     | Transmission avantageuse | Frais de gestion | Diversification
         PER               | Déduction immédiate | Blocage jusqu'à la retraite | Préparation retraite
 
@@ -389,7 +393,7 @@ if st.session_state.paiement_pdf_ok:
     def creer_pdf_riche(age, patrimoine, epargne, rendement):
         from io import BytesIO
         from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib import colors
         from datetime import datetime
@@ -411,6 +415,10 @@ if st.session_state.paiement_pdf_ok:
         # Récupérer le contenu riche
         texte_ia = generer_contenu_riche(age, patrimoine, epargne, rendement)
 
+        # Fonction pour formater les nombres
+        def fmt(n):
+            return f"{n:,.0f}".replace(",", " ")
+
         # ==========================================
         # PAGE 1 : PAGE DE GARDE
         # ==========================================
@@ -422,7 +430,7 @@ if st.session_state.paiement_pdf_ok:
         story.append(Paragraph("Analyses basées sur des algorithmes prédictifs avancés", style_mentions))
         story.append(Spacer(1, 40))
         story.append(Paragraph(f"Généré le : {datetime.now().strftime('%d %B %Y')}", style_mentions))
-        story.append(Paragraph(f"Profil client : {age} ans - {patrimoine:,.0f} € de patrimoine", style_mentions))
+        story.append(Paragraph(f"Profil client : {age} ans - {fmt(patrimoine)} euros de patrimoine", style_mentions))
         story.append(Spacer(1, 20))
         story.append(Paragraph("DOCUMENT COMPORTANT 15 PAGES", style_mentions))
         story.append(PageBreak())
@@ -458,9 +466,9 @@ if st.session_state.paiement_pdf_ok:
         tableau_donnees = [
             ["Métrique", "Valeur", "Commentaire"],
             ["Âge", f"{age} ans", "Investisseur en phase d'accumulation"],
-            ["Patrimoine initial", f"{patrimoine:,.0f} €", "Base de projection"],
-            ["Épargne mensuelle", f"{epargne} €", "Effort d'épargne"],
-            ["Taux d'épargne annuel", f"{epargne*12/patrimoine*100:.1f}%", "Comparé à la moyenne (15%)"],
+            ["Patrimoine initial", f"{fmt(patrimoine)} euros", "Base de projection"],
+            ["Épargne mensuelle", f"{epargne} euros", "Effort d'épargne"],
+            ["Taux d'épargne annuel", f"{(epargne*12/patrimoine*100):.1f}%", "Comparé à la moyenne (15%)"],
             ["Objectif de rendement", f"{rendement}%", "Hypothèse de croissance"],
             ["Horizon d'investissement", "20 ans", "Long terme"],
             ["Profil de risque", "Équilibré-Dynamique", "Adapté à l'âge"]
@@ -478,14 +486,15 @@ if st.session_state.paiement_pdf_ok:
         ]))
         story.append(t)
 
-        # Projections importantes        projection_10 = patrimoine * ((1 + rendement/100) ** 10) + (epargne * 12) * ((1 + rendement/100) ** 10 - 1) / (rendement/100)
+        # Projections importantes
+        projection_10 = patrimoine * ((1 + rendement/100) ** 10) + (epargne * 12) * ((1 + rendement/100) ** 10 - 1) / (rendement/100)
         projection_20 = patrimoine * ((1 + rendement/100) ** 20) + (epargne * 12) * ((1 + rendement/100) ** 20 - 1) / (rendement/100)
         
         story.append(Spacer(1, 15))
         story.append(Paragraph("<b>Projections clés :</b>", style_corps))
-        story.append(Paragraph(f"À 10 ans : {projection_10:,.0f} €", style_corps))
-        story.append(Paragraph(f"À 20 ans : {projection_20:,.0f} €", style_corps))
-        story.append(Paragraph(f"Multiplicateur de capital : {projection_20/patrimoine:.1f}x", style_corps))
+        story.append(Paragraph(f"À 10 ans : {fmt(projection_10)} euros", style_corps))
+        story.append(Paragraph(f"À 20 ans : {fmt(projection_20)} euros", style_corps))
+        story.append(Paragraph(f"Multiplicateur de capital : {(projection_20/patrimoine):.1f}x", style_corps))
         story.append(PageBreak())
 
         # ==========================================
@@ -505,14 +514,7 @@ if st.session_state.paiement_pdf_ok:
                 story.append(PageBreak())
                 story.append(Paragraph(txt, style_section))
             else:
-                # Gérer les lignes de tableau
-                if "|" in txt and "----" not in txt:
-                    # Traitement simple des tableaux (à améliorer selon besoin)
-                    cells = [cell.strip() for cell in txt.split('|') if cell.strip()]
-                    if len(cells) >= 2:
-                        story.append(Paragraph(txt, style_corps))
-                else:
-                    story.append(Paragraph(txt, style_corps))
+                story.append(Paragraph(txt, style_corps))
 
         # ==========================================
         # PAGE 15 : CONCLUSION ET MENTIONS
@@ -530,8 +532,8 @@ if st.session_state.paiement_pdf_ok:
         4. Transmission : Préparation progressive de la succession de votre patrimoine
         5. Suivi : Réévaluation annuelle pour ajuster la stratégie
 
-        Votre capital projeté à 20 ans : {projection_20:,.0f} €
-        Revenu complémentaire annuel estimé : {projection_20*rendement/100:,.0f} €
+        Votre capital projeté à 20 ans : {fmt(projection_20)} euros
+        Revenu complémentaire annuel estimé : {fmt(projection_20*rendement/100)} euros
         """
         story.append(Paragraph(conclusion, style_corps))
 
@@ -580,6 +582,7 @@ if st.session_state.paiement_pdf_ok:
     )
     
     st.success("✅ Votre rapport est prêt ! Il contient 15 pages d'analyses détaillées avec tableaux et projections.")
+
 
 
 
