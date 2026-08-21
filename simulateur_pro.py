@@ -3,13 +3,17 @@ import plotly.graph_objects as go
 import numpy as np
 from io import BytesIO
 import stripe
-import time
 from datetime import datetime
 
-# Configuration de Stripe
+# Configuration de Stripe - À MODIFIER AVEC VOS VRAIES CLÉS
 STRIPE_SECRET_KEY = st.secrets.get("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = st.secrets.get("STRIPE_PUBLISHABLE_KEY", "")
 PRICE_ID = st.secrets.get("STRIPE_PRICE_ID", "")
+
+# URL DE VOTRE APPLICATION - À MODIFIER !
+# Pour Streamlit Cloud : "https://votre-app.streamlit.app"
+# Pour localhost : "http://localhost:8501"
+APP_URL = st.secrets.get("APP_URL", "http://localhost:8501")
 
 # Initialiser Stripe si configuré
 if STRIPE_SECRET_KEY:
@@ -20,14 +24,10 @@ if "simulation_faite" not in st.session_state:
     st.session_state.simulation_faite = False
 if "paiement_reussi" not in st.session_state:
     st.session_state.paiement_reussi = False
-if "checkout_session_id" not in st.session_state:
-    st.session_state.checkout_session_id = None
 if "verification_faite" not in st.session_state:
     st.session_state.verification_faite = False
 if "donnees_client" not in st.session_state:
     st.session_state.donnees_client = {}
-if "stripe_error" not in st.session_state:
-    st.session_state.stripe_error = None
 
 st.title("Intelligence Artificielle & Expertise Patrimoniale")
 st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
@@ -83,49 +83,23 @@ if st.session_state.simulation_faite:
             st.warning("⚠️ Mode démo : Le paiement Stripe n'est pas configuré.")
             
             # Mode démo UNIQUEMENT pour le développement
-            if st.checkbox("🔧 Mode développeur - Simuler paiement"):
-                if st.button("✅ Valider le paiement (DÉMO)"):
-                    st.session_state.paiement_reussi = True
-                    st.session_state.donnees_client = {
-                        "age": age,
-                        "patrimoine": patrimoine_actuel,
-                        "epargne": epargne_mensuelle,
-                        "rendement": Rendement
-                    }
-                    st.success("✅ Paiement validé (mode démo) ! Votre rapport est prêt.")
-                    st.rerun()
+            if st.button("🎯 Mode Démo - Obtenir le rapport gratuitement", use_container_width=True):
+                st.session_state.paiement_reussi = True
+                st.session_state.donnees_client = {
+                    "age": age,
+                    "patrimoine": patrimoine_actuel,
+                    "epargne": epargne_mensuelle,
+                    "rendement": Rendement
+                }
+                st.success("✅ Mode démo activé ! Votre rapport est prêt.")
+                st.rerun()
         else:
-            # Fonction pour créer une session Stripe Checkout avec URL valide
+            # Fonction pour créer une session Stripe Checkout avec URL fixe
             def create_checkout_session(age, patrimoine, epargne, rendement):
                 try:
-                    # Récupérer l'URL de base de l'application
-                    # Pour Streamlit Cloud
-                    base_url = st.get_option('server.baseUrlPath')
-                    if base_url and base_url != "/":
-                        # Si on est sur un sous-chemin (Streamlit Cloud)
-                        app_url = f"https://{st.get_option('server.address')}{base_url}"
-                    else:
-                        # Pour localhost ou domaine principal
-                        app_url = st.get_option('server.address')
-                        if app_url in ['0.0.0.0', 'localhost']:
-                            app_url = 'http://localhost:8501'
-                        else:
-                            app_url = f"https://{app_url}"
-                    
-                    # Nettoyer l'URL
-                    app_url = app_url.replace('//', '://')
-                    
-                    success_url = f"{app_url}?session_id={{CHECKOUT_SESSION_ID}}"
-                    cancel_url = app_url
-                    
-                    # Pour Streamlit Cloud, utiliser l'URL de l'app
-                    if 'streamlit' in str(app_url):
-                        # Essayer de récupérer l'URL de l'app depuis l'environnement
-                        import os
-                        cloud_url = os.environ.get('STREAMLIT_APP_URL')
-                        if cloud_url:
-                            success_url = f"{cloud_url}?session_id={{CHECKOUT_SESSION_ID}}"
-                            cancel_url = cloud_url
+                    # Utiliser une URL fixe et valide
+                    success_url = f"{APP_URL}?session_id={{CHECKOUT_SESSION_ID}}"
+                    cancel_url = APP_URL
                     
                     checkout_session = stripe.checkout.Session.create(
                         payment_method_types=["card"],
@@ -145,22 +119,24 @@ if st.session_state.simulation_faite:
                     )
                     return checkout_session.url
                 except Exception as e:
-                    st.session_state.stripe_error = str(e)
+                    st.error(f"Erreur Stripe: {str(e)}")
                     return None
             
             if st.button("💳 Payer 19€ et télécharger mon Audit", use_container_width=True):
                 url = create_checkout_session(age, patrimoine_actuel, epargne_mensuelle, Rendement)
                 if url:
                     # Rediriger vers Stripe Checkout
-                    st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
-                    st.info("🔄 Redirection vers Stripe en cours...")
+                    st.markdown(f"""
+                        <meta http-equiv="refresh" content="0;url={url}">
+                        <div style="text-align: center; padding: 50px;">
+                            <h3>🔄 Redirection vers Stripe en cours...</h3>
+                            <p>Si la redirection ne fonctionne pas, <a href="{url}" target="_blank">cliquez ici</a></p>
+                        </div>
+                    """, unsafe_allow_html=True)
                 else:
-                    if st.session_state.stripe_error:
-                        st.error(f"Erreur Stripe: {st.session_state.stripe_error}")
-                    else:
-                        st.error("Erreur lors de la création de la session de paiement")
+                    st.error("Erreur lors de la création de la session de paiement")
 
-    # Vérification du paiement Stripe (via le session_id dans l'URL)
+    # Vérification du paiement Stripe
     if not st.session_state.paiement_reussi and not st.session_state.verification_faite:
         query_params = st.query_params
         if "session_id" in query_params:
@@ -170,7 +146,6 @@ if st.session_state.simulation_faite:
                 if session.payment_status == "paid":
                     st.session_state.paiement_reussi = True
                     st.session_state.verification_faite = True
-                    # Récupérer les métadonnées
                     if session.metadata:
                         st.session_state.donnees_client = {
                             "age": int(session.metadata.get("age", 35)),
@@ -180,8 +155,6 @@ if st.session_state.simulation_faite:
                         }
                     st.success("✅ Paiement validé ! Votre rapport est prêt.")
                     st.rerun()
-                else:
-                    st.warning("⏳ En attente de validation du paiement...")
             except Exception as e:
                 st.error(f"Erreur de vérification: {str(e)}")
                 st.session_state.verification_faite = True
@@ -637,6 +610,7 @@ if st.session_state.paiement_reussi:
 else:
     if st.session_state.simulation_faite:
         st.info("💳 Effectuez le paiement pour accéder à votre rapport complet de 15 pages.")
+
 
 
 
