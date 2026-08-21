@@ -2,12 +2,28 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 from io import BytesIO
+import stripe
+import time
+import os
+import tempfile
+
+# Configuration de Stripe (à mettre dans les secrets Streamlit)
+STRIPE_SECRET_KEY = st.secrets.get("STRIPE_SECRET_KEY", "sk_test_...")
+STRIPE_PUBLISHABLE_KEY = st.secrets.get("STRIPE_PUBLISHABLE_KEY", "pk_test_...")
+PRICE_ID = st.secrets.get("STRIPE_PRICE_ID", "price_123456789")  # ID du prix créé dans Stripe
+
+# Initialiser Stripe
+stripe.api_key = STRIPE_SECRET_KEY
 
 # Initialisation des états
 if "simulation_faite" not in st.session_state:
     st.session_state.simulation_faite = False
-if "paiement_pdf_ok" not in st.session_state:
-    st.session_state.paiement_pdf_ok = False
+if "paiement_reussi" not in st.session_state:
+    st.session_state.paiement_reussi = False
+if "checkout_session_id" not in st.session_state:
+    st.session_state.checkout_session_id = None
+if "session_id_verification" not in st.session_state:
+    st.session_state.session_id_verification = None
 
 st.title("Intelligence Artificielle & Expertise Patrimoniale")
 st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
@@ -38,7 +54,7 @@ with col_graph:
     else:
         st.info("Remplissez les informations à gauche pour voir votre graphique de projection.")
 
-# --- ÉTAPE 2 : LE VERROU PAYANT ---
+# --- ÉTAPE 2 : LE VERROU PAYANT AVEC STRIPE ---
 if st.session_state.simulation_faite:
     st.markdown("---")
     st.markdown("### 🔒 Étape 2 : Obtenez votre Audit Certifié complet (15 pages)")
@@ -58,13 +74,75 @@ if st.session_state.simulation_faite:
     with col_action:
         st.error("💡 Tarif de lancement : 19,00 € TTC (au lieu de 49 €)")
         
-        if st.button("💳 Télécharger mon Audit PDF Complet (19 €)"):
-            st.session_state.paiement_pdf_ok = True
-            st.success("Paiement validé ! Votre rapport est prêt.")
+        # Fonction pour créer une session Stripe Checkout
+        def create_checkout_session(age, patrimoine, epargne, rendement):
+            # Stocker les données de l'utilisateur dans les métadonnées
+            metadata = {
+                "age": str(age),
+                "patrimoine": str(patrimoine),
+                "epargne": str(epargne),
+                "rendement": str(rendement),
+                "timestamp": str(int(time.time()))
+            }
+            
+            try:
+                # Créer la session Stripe Checkout
+                checkout_session = stripe.checkout.Session.create(
+                    payment_method_types=["card"],
+                    line_items=[{
+                        "price": PRICE_ID,  # Utiliser un prix existant dans Stripe
+                        "quantity": 1,
+                    }],
+                    mode="payment",
+                    success_url="https://votre-app.streamlit.app?session_id={CHECKOUT_SESSION_ID}",
+                    cancel_url="https://votre-app.streamlit.app",
+                    metadata=metadata,
+                    client_reference_id=f"user_{int(time.time())}",
+                )
+                return checkout_session.url
+            except Exception as e:
+                st.error(f"Erreur Stripe: {str(e)}")
+                return None
+        
+        # Bouton de paiement Stripe
+        if st.button("💳 Payer 19€ et télécharger mon Audit"):
+            url = create_checkout_session(age, patrimoine_actuel, epargne_mensuelle, Rendement)
+            if url:
+                # Rediriger vers Stripe Checkout
+                st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
+                st.success("Redirection vers Stripe en cours...")
+            else:
+                st.error("Erreur lors de la création de la session de paiement")
 
-# --- ÉTAPE 3 : ACCÈS AU PDF ---
-if st.session_state.paiement_pdf_ok:
+    # Vérification du paiement
+    # Pour les tests en local, ajouter un bouton de vérification manuelle
+    if st.checkbox("🔧 Mode test - Simuler un paiement réussi"):
+        if st.button("✅ Valider le paiement (TEST)"):
+            st.session_state.paiement_reussi = True
+            st.success("✅ Paiement validé (mode test) ! Votre rapport est prêt.")
+
+    # Vérifier si un paiement a été effectué via l'URL (pour la redirection Stripe)
+    # Récupérer le session_id depuis l'URL
+    query_params = st.query_params
+    if "session_id" in query_params:
+        session_id = query_params["session_id"]
+        try:
+            # Vérifier le statut du paiement
+            session = stripe.checkout.Session.retrieve(session_id)
+            if session.payment_status == "paid":
+                st.session_state.paiement_reussi = True
+                st.session_state.session_id_verification = session_id
+                # Récupérer les métadonnées
+                if session.metadata:
+                    st.session_state.paiement_metadata = session.metadata
+                st.success("✅ Paiement validé ! Votre rapport est prêt.")
+        except Exception as e:
+            st.error(f"Erreur de vérification: {str(e)}")
+
+# --- ÉTAPE 3 : ACCÈS AU PDF APRÈS PAIEMENT ---
+if st.session_state.paiement_reussi:
     st.markdown("### 📥 Téléchargez votre document")
+    st.balloons()  # Effet de célébration
 
     # Fonction pour générer un contenu TRÈS RICHE et DÉTAILLÉ
     def generer_contenu_riche(age, patrimoine, epargne, rendement):
@@ -409,8 +487,6 @@ if st.session_state.paiement_pdf_ok:
         style_mentions = ParagraphStyle('Mentions', parent=styles['Normal'], fontSize=9, leading=12, textColor=colors.HexColor('#94A3B8'), alignment=1)
         style_section = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=16, leading=20, textColor=colors.HexColor('#004B87'), spaceBefore=20, spaceAfter=15, keepWithNext=True)
         style_corps = ParagraphStyle('Corps', parent=styles['BodyText'], fontSize=10.5, leading=17, textColor=colors.HexColor('#1E293B'), spaceAfter=12)
-        style_table_entete = ParagraphStyle('TableEntete', parent=styles['BodyText'], fontSize=10.5, leading=14, textColor=colors.HexColor('#FFFFFF'), spaceAfter=6)
-        style_highlight = ParagraphStyle('Highlight', parent=styles['Normal'], fontSize=12, leading=18, textColor=colors.HexColor('#004B87'), spaceAfter=12, leftIndent=20, rightIndent=20, alignment=1)
 
         # Récupérer le contenu riche
         texte_ia = generer_contenu_riche(age, patrimoine, epargne, rendement)
@@ -570,7 +646,7 @@ if st.session_state.paiement_pdf_ok:
         pdf_buffer.seek(0)
         return pdf_buffer.getvalue()
 
-    # Génération du PDF
+    # Génération du PDF (seulement si le paiement est validé)
     with st.spinner("Génération de votre rapport complet sur 15 pages avec analyses détaillées..."):
         pdf_data = creer_pdf_riche(age, patrimoine_actuel, epargne_mensuelle, Rendement)
 
@@ -578,10 +654,12 @@ if st.session_state.paiement_pdf_ok:
         label="⬇️ Télécharger l'Audit Patrimonial Complet (15 pages)",
         data=pdf_data,
         file_name=f"Audit_Patrimonial_Complet_{age}ans.pdf",
-        mime="application/pdf"
+        mime="application/pdf",
+        use_container_width=True,
     )
     
     st.success("✅ Votre rapport est prêt ! Il contient 15 pages d'analyses détaillées avec tableaux et projections.")
+
 
 
 
