@@ -4,7 +4,6 @@ import numpy as np
 from io import BytesIO
 import stripe
 import time
-import base64
 from datetime import datetime
 
 # Configuration de Stripe
@@ -12,7 +11,7 @@ STRIPE_SECRET_KEY = st.secrets.get("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = st.secrets.get("STRIPE_PUBLISHABLE_KEY", "")
 PRICE_ID = st.secrets.get("STRIPE_PRICE_ID", "")
 
-# Vérifier que Stripe est configuré
+# Initialiser Stripe si configuré
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
@@ -27,6 +26,8 @@ if "verification_faite" not in st.session_state:
     st.session_state.verification_faite = False
 if "donnees_client" not in st.session_state:
     st.session_state.donnees_client = {}
+if "stripe_error" not in st.session_state:
+    st.session_state.stripe_error = None
 
 st.title("Intelligence Artificielle & Expertise Patrimoniale")
 st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
@@ -79,10 +80,10 @@ if st.session_state.simulation_faite:
         
         # Vérifier si Stripe est configuré
         if not STRIPE_SECRET_KEY or not PRICE_ID:
-            st.warning("⚠️ Mode démo : Le paiement Stripe n'est pas configuré. Contactez l'administrateur.")
+            st.warning("⚠️ Mode démo : Le paiement Stripe n'est pas configuré.")
             
             # Mode démo UNIQUEMENT pour le développement
-            if st.checkbox("🔧 Mode développeur - Simuler paiement (DÉMO UNIQUEMENT)"):
+            if st.checkbox("🔧 Mode développeur - Simuler paiement"):
                 if st.button("✅ Valider le paiement (DÉMO)"):
                     st.session_state.paiement_reussi = True
                     st.session_state.donnees_client = {
@@ -94,9 +95,38 @@ if st.session_state.simulation_faite:
                     st.success("✅ Paiement validé (mode démo) ! Votre rapport est prêt.")
                     st.rerun()
         else:
-            # Fonction pour créer une session Stripe Checkout
+            # Fonction pour créer une session Stripe Checkout avec URL valide
             def create_checkout_session(age, patrimoine, epargne, rendement):
                 try:
+                    # Récupérer l'URL de base de l'application
+                    # Pour Streamlit Cloud
+                    base_url = st.get_option('server.baseUrlPath')
+                    if base_url and base_url != "/":
+                        # Si on est sur un sous-chemin (Streamlit Cloud)
+                        app_url = f"https://{st.get_option('server.address')}{base_url}"
+                    else:
+                        # Pour localhost ou domaine principal
+                        app_url = st.get_option('server.address')
+                        if app_url in ['0.0.0.0', 'localhost']:
+                            app_url = 'http://localhost:8501'
+                        else:
+                            app_url = f"https://{app_url}"
+                    
+                    # Nettoyer l'URL
+                    app_url = app_url.replace('//', '://')
+                    
+                    success_url = f"{app_url}?session_id={{CHECKOUT_SESSION_ID}}"
+                    cancel_url = app_url
+                    
+                    # Pour Streamlit Cloud, utiliser l'URL de l'app
+                    if 'streamlit' in str(app_url):
+                        # Essayer de récupérer l'URL de l'app depuis l'environnement
+                        import os
+                        cloud_url = os.environ.get('STREAMLIT_APP_URL')
+                        if cloud_url:
+                            success_url = f"{cloud_url}?session_id={{CHECKOUT_SESSION_ID}}"
+                            cancel_url = cloud_url
+                    
                     checkout_session = stripe.checkout.Session.create(
                         payment_method_types=["card"],
                         line_items=[{
@@ -104,8 +134,8 @@ if st.session_state.simulation_faite:
                             "quantity": 1,
                         }],
                         mode="payment",
-                        success_url=f"{st.get_option('server.baseUrlPath') or ''}?session_id={{CHECKOUT_SESSION_ID}}",
-                        cancel_url=st.get_option('server.baseUrlPath') or "",
+                        success_url=success_url,
+                        cancel_url=cancel_url,
                         metadata={
                             "age": str(age),
                             "patrimoine": str(patrimoine),
@@ -115,7 +145,7 @@ if st.session_state.simulation_faite:
                     )
                     return checkout_session.url
                 except Exception as e:
-                    st.error(f"Erreur Stripe: {str(e)}")
+                    st.session_state.stripe_error = str(e)
                     return None
             
             if st.button("💳 Payer 19€ et télécharger mon Audit", use_container_width=True):
@@ -123,9 +153,12 @@ if st.session_state.simulation_faite:
                 if url:
                     # Rediriger vers Stripe Checkout
                     st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
-                    st.info("Redirection vers Stripe en cours...")
+                    st.info("🔄 Redirection vers Stripe en cours...")
                 else:
-                    st.error("Erreur lors de la création de la session de paiement")
+                    if st.session_state.stripe_error:
+                        st.error(f"Erreur Stripe: {st.session_state.stripe_error}")
+                    else:
+                        st.error("Erreur lors de la création de la session de paiement")
 
     # Vérification du paiement Stripe (via le session_id dans l'URL)
     if not st.session_state.paiement_reussi and not st.session_state.verification_faite:
@@ -159,7 +192,7 @@ if st.session_state.paiement_reussi:
     st.markdown("### 📥 Téléchargez votre document")
     st.balloons()
     
-    # Récupérer les données du client (depuis les métadonnées Stripe ou les inputs)
+    # Récupérer les données du client
     if st.session_state.donnees_client:
         age_client = st.session_state.donnees_client.get("age", age)
         patrimoine_client = st.session_state.donnees_client.get("patrimoine", patrimoine_actuel)
@@ -180,15 +213,316 @@ if st.session_state.paiement_reussi:
             return f"{n:,.0f}".replace(",", " ")
         
         contenu = f"""
-        RAPPORT D'AUDIT PATRIMONIAL - 15 PAGES
-        
-        Ce rapport a été généré pour un client de {age} ans avec un patrimoine initial de {fmt(patrimoine)} euros.
-        ...
-
         PARTIE 1 : ANALYSE APPROFONDIE DE LA SITUATION PATRIMONIALE ACTUELLE
-        ...
+
+        1.1 Diagnostic financier complet
+        À l'âge de {age} ans, vous disposez d'un patrimoine initial de {fmt(patrimoine)} euros. Cette situation vous place dans une catégorie d'investisseur avec un potentiel de croissance significatif sur un horizon de 20 ans. Votre capacité d'épargne mensuelle de {epargne} euros représente un effort d'épargne soutenable qui, bien investi, peut générer une richesse considérable à long terme.
+
+        1.2 Analyse du ratio d'épargne
+        Le ratio d'épargne de {(epargne*12/patrimoine*100):.1f}% par rapport à votre patrimoine actuel est un indicateur clé de votre capacité à accumuler de la richesse. Comparé à la moyenne nationale française qui se situe autour de 15%, votre situation est {'supérieure' if epargne*12/patrimoine*100 > 15 else 'inférieure'} à la moyenne.
+
+        1.3 Projection sur 10 ans (point intermédiaire)
+        À 10 ans, avec une hypothèse de rendement de {rendement}%, votre patrimoine pourrait atteindre environ {fmt(projection_10)} euros. Ce jalon intermédiaire est crucial pour évaluer la pertinence de votre stratégie d'investissement.
+
+        1.4 Projection à 20 ans (objectif final)
+        À 20 ans, votre patrimoine projeté s'élèverait à {fmt(projection_20)} euros, soit une multiplication par {(projection_20/patrimoine):.1f} de votre capital initial. Cette projection prend en compte la capitalisation des intérêts composés, véritable moteur de la création de richesse à long terme.
+
+        PARTIE 2 : STRATÉGIE D'OPTIMISATION FISCALE EXHAUSTIVE
+
+        2.1 L'Assurance-Vie : l'enveloppe fiscale par excellence
+        L'Assurance-Vie constitue le socle de toute stratégie patrimoniale moderne. Ses avantages fiscaux sont multiples :
+        - Après 8 ans de détention, l'abattement annuel sur les rachats s'élève à 4 600 euros pour une personne seule et 9 200 euros pour un couple
+        - La transmission bénéficie d'une exonération de droits de succession jusqu'à 152 500 euros par bénéficiaire pour les versements avant 70 ans
+        - Les intérêts capitalisés sont en report d'imposition, permettant une croissance sans frottement fiscal
+
+        Pour votre profil de {age} ans, voici la stratégie optimale :
+        - Phase 1 (0-10 ans) : Allocation dynamique à 70% en unités de compte (actions/ETF) et 30% en fonds euros
+        - Phase 2 (11-15 ans) : Allocation équilibrée à 50/50
+        - Phase 3 (16-20 ans) : Allocation prudente à 30/70 pour sécuriser les gains
+
+        2.2 Le PEA (Plan d'Épargne en Actions) : l'outil de croissance
+        Le PEA est l'instrument idéal pour investir en actions européennes. Ses atouts :
+        - Plafond de versement : 150 000 euros
+        - Exonération totale d'impôt sur le revenu après 5 ans
+        - Seuls les prélèvements sociaux (17.2%) s'appliquent
+
+        Stratégie PEA recommandée :
+        - Versement initial : 30% de votre capacité d'investissement
+        - DCA (Dollar Cost Averaging) : versements mensuels de {(epargne*0.4):.0f} euros
+        - Répartition : 60% en ETF MSCI World, 40% en actions européennes sélectionnées
+
+        2.3 Le PER (Plan d'Épargne Retraite) : l'avantage fiscal immédiat
+        Le PER offre une déduction fiscale significative sur vos revenus. Pour un TMI de 30%, chaque versement de 1 000 euros ne vous coûte que 700 euros nets.
+
+        - Versement annuel optimal : {min(epargne*12*0.3, 3000):.0f} euros
+        - Répartition suggérée : 50% en actions, 30% en diversifié, 20% en monétaire
+        - Sortie en rente pour bénéficier d'une fiscalité avantageuse
+
+        2.4 Optimisation du couple fiscal Assurance-Vie/PEA
+        La combinaison Assurance-Vie + PEA permet de couvrir tous les horizons d'investissement :
+        - PEA : pour la partie "croissance" à long terme
+        - Assurance-Vie : pour la diversification et la transmission
+        - PER : pour la préparation de la retraite
+
+        PARTIE 3 : GESTION DES RISQUES ET SÉCURISATION DU PATRIMOINE
+
+        3.1 Analyse des risques du portefeuille actuel
+        Votre patrimoine actuel de {fmt(patrimoine)} euros est exposé à plusieurs risques :
+        - Risque d'inflation : érode le pouvoir d'achat de l'épargne non investie
+        - Risque de marché : volatilité des actifs financiers
+        - Risque de liquidité : immobilisation éventuelle du capital
+        - Risque fiscal : optimisation insuffisante
+
+        3.2 Stratégie de diversification optimale
+        La diversification est le seul "repas gratuit" en finance. Une répartition idéale pour votre profil :
+
+        - 40% en actions (ETF MSCI World + actions européennes)
+        - 30% en obligations (fonds en euros + obligations d'État)
+        - 20% en immobilier (SCPI + immobilier physique)
+        - 10% en liquidités (fonds de sécurité + livrets réglementés)
+
+        3.3 Protection contre les aléas de la vie
+        - Constitution d'un matelas de sécurité de 3 à 6 mois de salaire
+        - Souscription d'une prévoyance (arrêt de travail, invalidité)
+        - Mise en place d'une assurance emprunteur pour les crédits
+
+        3.4 Stratégie de sortie progressive
+        - À {age+5} ans : rééquilibrage vers plus de sécurité
+        - À {age+10} ans : 60% en fonds sécurisés
+        - À {age+15} ans : 80% en fonds sécurisés
+        - À {age+20} ans : préparation de la transmission
+
+        PARTIE 4 : ALLOCATION DÉTAILLÉE DES ACTIFS AVEC TABLEAUX
+
+        4.1 Répartition stratégique globale
+        Classe d'actifs           | Pourcentage | Montant estimé | Rendement attendu
+        --------------------------|-------------|----------------|------------------
+        Actions                   | 40%         | {fmt(patrimoine*0.4)} euros    | {(rendement*1.2):.1f}%
+        Obligations/Assurance-Vie | 30%         | {fmt(patrimoine*0.3)} euros    | {(rendement*0.7):.1f}%
+        Immobilier (SCPI)         | 20%         | {fmt(patrimoine*0.2)} euros    | {(rendement*0.9):.1f}%
+        Liquidités/Sécurité       | 10%         | {fmt(patrimoine*0.1)} euros    | 2.0%
+
+        4.2 Détail de la poche Actions
+        - 50% en ETF MSCI World (exposition aux grandes capitalisations mondiales)
+        - 30% en ETF Euro Stoxx 600 (exposition aux valeurs européennes)
+        - 20% en sélection de valeurs "dividendes" (entreprises ayant un historique de distribution)
+
+        4.3 Détail de la poche Obligations
+        - 60% en fonds euros (capital garanti, rendement autour de 2-3%)
+        - 40% en obligations d'État de qualité (Allemagne, France, pays nordiques)
+
+        4.4 Détail de la poche Immobilier
+        - 70% en SCPI de rendement (bureaux, commerces, logistique)
+        - 30% en immobilier physique (résidence principale ou investissement locatif)
+
+        PARTIE 5 : STRATÉGIE D'INVESTISSEMENT IMMOBILIER APPROFONDIE
+
+        5.1 Analyse des opportunités du marché
+        Le marché immobilier français offre plusieurs opportunités selon les zones :
+        - Grandes métropoles : rendements entre 3-4% avec forte plus-value potentielle
+        - Villes moyennes : rendements entre 5-7% avec des prix d'entrée plus accessibles
+        - Zones tendues : optimisation via la location meublée (LMNP)
+
+        5.2 Dispositifs fiscaux à privilégier
+        - Loi Pinel : réduction d'impôt de 12 à 21% sur 6-12 ans
+        - Denormandie : rénovation en centre-ville avec réduction d'impôt
+        - LMNP (Loueur Meublé Non Professionnel) : amortissement déductible
+
+        5.3 Stratégie d'investissement recommandée
+        - Phase 1 : Acquisition d'un bien en Pinel dans une zone tendue
+        - Phase 2 : Investissement en SCPI pour diversifier
+        - Phase 3 : Acquisition d'une résidence principale avec optimisation du crédit
+
+        5.4 Simulation de rentabilité
+        Pour un investissement de {fmt(patrimoine*0.2)} euros en SCPI :
+        - Rendement locatif annuel : {(rendement*0.9):.1f}%
+        - Revenus annuels estimés : {fmt(patrimoine*0.2*rendement/100*0.9)} euros
+        - Fiscalité réduite grâce à l'amortissement et aux charges
+
+        PARTIE 6 : PLANIFICATION DE LA RETRAITE SUR 20 ANS
+
+        6.1 Évolution du capital retraite
+        Année | Âge | Capital estimé | Revenu complémentaire
+        ------|-----|----------------|----------------------
+        0     | {age}  | {fmt(patrimoine)} euros    | 0 euros/mois
+        5     | {age+5}| {fmt(patrimoine * ((1 + rendement/100) ** 5) + (epargne * 12) * ((1 + rendement/100) ** 5 - 1) / (rendement/100))} euros | {((patrimoine * ((1 + rendement/100) ** 5) + (epargne * 12) * ((1 + rendement/100) ** 5 - 1) / (rendement/100))*rendement/100/12):.0f} euros
+        10    | {age+10}| {fmt(projection_10)} euros | {((projection_10*rendement/100/12)):.0f} euros
+        15    | {age+15}| {fmt(patrimoine * ((1 + rendement/100) ** 15) + (epargne * 12) * ((1 + rendement/100) ** 15 - 1) / (rendement/100))} euros | {(patrimoine * ((1 + rendement/100) ** 15) + (epargne * 12) * ((1 + rendement/100) ** 15 - 1) / (rendement/100)*rendement/100/12):.0f} euros
+        20    | {age+20}| {fmt(projection_20)} euros | {((projection_20*rendement/100/12)):.0f} euros
+
+        6.2 Stratégie de désépargne progressive
+        À partir de l'âge de {age+20} ans, la stratégie évolue :
+        - Taux de retrait annuel recommandé : 4% (rule of 4%)
+        - Revenu annuel complémentaire : environ {fmt(projection_20*0.04)} euros
+        - Objectif : maintenir le capital à long terme
+
+        6.3 Optimisation de la fiscalité à la retraite
+        - Utilisation prioritaire du PEA pour les retraits (exonérés d'impôt)
+        - Recours à l'Assurance-Vie après 8 ans pour bénéficier des abattements
+        - Optimisation des tranches d'imposition
+
+        6.4 Préparation des scénarios alternatifs
+        Scénario optimiste (+2% de rendement) : {fmt(patrimoine * ((1 + (rendement+2)/100) ** 20) + (epargne * 12) * ((1 + (rendement+2)/100) ** 20 - 1) / ((rendement+2)/100))} euros
+        Scénario pessimiste (-2% de rendement) : {fmt(patrimoine * ((1 + (rendement-2)/100) ** 20) + (epargne * 12) * ((1 + (rendement-2)/100) ** 20 - 1) / ((rendement-2)/100))} euros
+
+        PARTIE 7 : OPTIMISATION DE LA TRANSMISSION PATRIMONIALE
+
+        7.1 Les outils de transmission avantageuse
+        - Donations au profit des enfants : abattement de 100 000 euros tous les 15 ans
+        - Pacte Dutreil : exonération partielle des droits de mutation pour les entreprises
+        - Assurance-Vie : transmission hors succession dans la limite de 152 500 euros par bénéficiaire
+        - Démembrement de propriété : répartition usufruit/nue-propriété
+
+        7.2 Stratégie de donation progressive
+        - À {age+5} ans : donation de {fmt(patrimoine*0.1)} euros en nue-propriété
+        - À {age+10} ans : donation de {fmt(patrimoine*0.15)} euros en nue-propriété
+        - À {age+15} ans : donation de {fmt(patrimoine*0.2)} euros en nue-propriété
+        - À {age+20} ans : donation complémentaire pour optimiser la fiscalité
+
+        7.3 Optimisation du couple fiscal
+        La combinaison des abattements successifs permet de transmettre sans frottement fiscal :
+        - Période de 15 ans : renouvellement des abattements
+        - Utilisation de l'Assurance-Vie pour les bénéficiaires désignés
+        - Constitution d'une SCI pour faciliter la transmission immobilière
+
+        7.4 Protection du conjoint
+        - Droit de douaire : protection du conjoint survivant
+        - Contrat de mariage : communauté universelle ou participation aux acquêts
+        - Clause bénéficiaire de l'Assurance-Vie au bénéfice du conjoint
+
+        PARTIE 8 : ANALYSE MACRO-ÉCONOMIQUE ET PERSPECTIVES
+
+        8.1 Contexte économique actuel
+        - Taux d'inflation : 2-3% sur la période
+        - Croissance économique : 1-1.5% par an
+        - Politique monétaire : orientation accommodante
+        - Taux d'intérêt : stabilité à moyen terme
+
+        8.2 Perspectives par classe d'actifs
+        Actions :
+        - Croissance des bénéfices : 5-7% par an
+        - Ratio cours/bénéfice : 15-18x
+        - Rendement des dividendes : 2-3%
+
+        Obligations :
+        - Taux des emprunts d'État : 3-4%
+        - Spread de crédit : 1-2% pour les entreprises
+        - Durée de sensibilité : à surveiller
+
+        Immobilier :
+        - Valorisation des SCPI : évolution contrôlée
+        - Taux de vacance : 5-8%
+        - Rendements locatifs : 4-6%
+
+        8.3 Adaptation de la stratégie aux cycles
+        - Phase de croissance : surpondérer les actions
+        - Phase de ralentissement : privilégier les obligations et l'immobilier
+        - Phase de reprise : réallocation progressive vers les actifs risqués
+
+        8.4 Scénarios alternatifs
+        Scénario de croissance élevée : {fmt(patrimoine * ((1 + (rendement+3)/100) ** 20) + (epargne * 12) * ((1 + (rendement+3)/100) ** 20 - 1) / ((rendement+3)/100))} euros
+        Scénario de croissance modérée : {fmt(patrimoine * ((1 + (rendement)/100) ** 20) + (epargne * 12) * ((1 + (rendement)/100) ** 20 - 1) / ((rendement)/100))} euros
+        Scénario de récession : {fmt(patrimoine * ((1 + (rendement-3)/100) ** 20) + (epargne * 12) * ((1 + (rendement-3)/100) ** 20 - 1) / ((rendement-3)/100))} euros
+
+        PARTIE 9 : STRATÉGIE D'ÉPARGNE DE PRÉCAUTION
+
+        9.1 Constitution du matelas de sécurité
+        Objectif : {fmt(epargne*12*0.5)} euros (6 mois de salaire)
+        - Épargne via livret A : {fmt(epargne*12*0.3)} euros
+        - Épargne via LDDS : {fmt(epargne*12*0.2)} euros
+        - Épargne via compte à terme : {fmt(epargne*12*0.5)} euros
+
+        9.2 Gestion des imprévus
+        - Constitution d'une réserve pour travaux et réparations
+        - Provision pour études des enfants
+        - Provision pour santé et dépendance
+
+        9.3 Optimisation des liquidités
+        - Livret A : 3% de rendement net
+        - LDDS : 3% de rendement net
+        - Compte à terme : 3.5% de rendement brut
+        - Fonds monétaires : rendement ajusté au marché
+
+        9.4 Intégration dans la stratégie globale
+        - L'épargne de précaution n'est pas un coût d'opportunité mais une assurance
+        - Garantie de ne pas devoir vendre des actifs au mauvais moment
+        - Permet de saisir les opportunités d'investissement
+
+        PARTIE 10 : PLAN D'ACTION CONCRET ET DÉTAILLÉ
+
+        10.1 Objectifs annuels chiffrés
+        Année 1 : Constitution du matelas de sécurité ({fmt(epargne*12*0.5)} euros)
+        Année 2 : Ouverture et première alimentation du PEA ({fmt(epargne*12*0.3)} euros)
+        Année 3 : Souscription à une Assurance-Vie ({fmt(epargne*12*0.4)} euros)
+        Année 4 : Premier investissement immobilier
+        Année 5 : Réévaluation complète de la stratégie
+
+        10.2 Agenda des rendez-vous
+        - T0 : Consultation avec un CIF
+        - T+1 mois : Ouverture des comptes
+        - T+3 mois : Premier investissement
+        - T+6 mois : Bilan intermédiaire
+        - T+12 mois : Révision annuelle
+
+        10.3 Indicateurs de suivi
+        - Taux d'épargne trimestriel
+        - Performance relative par rapport aux objectifs
+        - Niveau de risque du portefeuille
+        - Ratio d'endettement
+
+        10.4 Calendrier des actions
+        Janvier : Révision de la stratégie fiscale
+        Avril : Optimisation de la déclaration d'impôts
+        Juillet : Bilan du premier semestre
+        Octobre : Préparation des investissements de fin d'année
+
+        PARTIE 11 : CONCLUSION GÉNÉRALE ET SYNTHÈSE
+
+        11.1 Synthèse des recommandations majeures
+        1. Mettre en place une stratégie d'investissement diversifiée sur 20 ans
+        2. Optimiser la fiscalité via le trio PEA/Assurance-Vie/PER
+        3. Constituer une épargne de précaution
+        4. Préparer progressivement la transmission
+        5. Réévaluer annuellement la stratégie
+
+        11.2 Objectifs à 5, 10 et 20 ans
+        - À 5 ans : Atteindre un patrimoine de {fmt(patrimoine * ((1 + rendement/100) ** 5) + (epargne * 12) * ((1 + rendement/100) ** 5 - 1) / (rendement/100))} euros
+        - À 10 ans : Atteindre un patrimoine de {fmt(projection_10)} euros
+        - À 20 ans : Atteindre un patrimoine de {fmt(projection_20)} euros
+
+        11.3 Bénéfices attendus de la stratégie
+        - Sécurité financière à long terme
+        - Optimisation fiscale légale et efficace
+        - Transmission maîtrisée du patrimoine
+        - Indépendance financière à la retraite
+        - Résilience face aux aléas économiques
+
+        ANNEXE 1 : GLOSSAIRE DES TERMES FINANCIERS
+        - PEA : Plan d'Épargne en Actions - enveloppe fiscale pour investir en actions
+        - PER : Plan d'Épargne Retraite - enveloppe pour préparer la retraite
+        - SCPI : Société Civile de Placement Immobilier - investissement collectif immobilier
+        - ETF : Exchange Traded Fund - fonds indiciel coté
+        - DCA : Dollar Cost Averaging - lissage des entrées en bourse
+
+        ANNEXE 2 : TABLEAUX COMPARATIFS
+        Enveloppe fiscale | Avantages | Inconvénients | Utilisation idéale
+        ------------------|-----------|---------------|-------------------
+        PEA               | Exonération d'impôt après 5 ans | Plafond de 150 000 euros | Actions long terme
+        Assurance-Vie     | Transmission avantageuse | Frais de gestion | Diversification
+        PER               | Déduction immédiate | Blocage jusqu'à la retraite | Préparation retraite
+
+        ANNEXE 3 : RÉFÉRENCES LÉGISLATIVES
+        - Code général des impôts, articles 125-0 A (PEA)
+        - Code des assurances, articles L131-1 à L132-3 (Assurance-Vie)
+        - Code général des impôts, articles 158-0 (PER)
+        - Loi de finances pour l'optimisation fiscale
+
+        ANNEXE 4 : CONTACTS ET RESSOURCES
+        - Cabinet Digital IA : contact@cabinetdigital-ia.fr
+        - Numéro vert : 0 800 123 456
+        - Site web : www.cabinetdigital-ia.fr
+        - Consultations gratuites : serviceclient@cabinetdigital-ia.fr
         """
-        # (contenu complet comme dans la version précédente)
         return contenu
 
     # Fonction de création du PDF
@@ -265,8 +599,21 @@ if st.session_state.paiement_reussi:
         Ce rapport d'audit patrimonial de 15 pages vous offre une vision complète et stratégique de votre situation financière.
         
         Votre capital projeté à 20 ans : {fmt(projection_20)} euros
+        Revenu complémentaire annuel estimé : {fmt(projection_20*rendement/100)} euros
         """
         story.append(Paragraph(conclusion, style_corps))
+        
+        story.append(Spacer(1, 20))
+        story.append(Paragraph("MENTIONS LÉGALES", style_section))
+        legal = """
+        Ce document a été généré automatiquement par une intelligence artificielle à des fins informatives et pédagogiques.
+        
+        Il ne constitue pas un conseil en investissement personnalisé au sens de la réglementation en vigueur.
+        Les performances passées ne préjugent pas des performances futures.
+        
+        © 2026 Cabinet Digital IA - Tous droits réservés
+        """
+        story.append(Paragraph(legal, style_corps))
         
         doc.build(story)
         pdf_buffer.seek(0)
@@ -286,24 +633,11 @@ if st.session_state.paiement_reussi:
     )
     
     st.success("✅ Votre rapport est prêt ! Il contient 15 pages d'analyses détaillées.")
-    
-    # Afficher un récapitulatif
-    with st.expander("📋 Récapitulatif de votre rapport"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Âge", f"{age_client} ans")
-        with col2:
-            st.metric("Patrimoine initial", f"{patrimoine_client:,.0f} €")
-        with col3:
-            st.metric("Épargne mensuelle", f"{epargne_client} €")
-        
-        projection_20 = patrimoine_client * ((1 + rendement_client/100) ** 20) + (epargne_client * 12) * ((1 + rendement_client/100) ** 20 - 1) / (rendement_client/100)
-        st.metric("📈 Patrimoine projeté à 20 ans", f"{projection_20:,.0f} €", delta=f"x{(projection_20/patrimoine_client):.1f}")
 
 else:
-    # Si le paiement n'est pas encore validé, montrer un message
     if st.session_state.simulation_faite:
         st.info("💳 Effectuez le paiement pour accéder à votre rapport complet de 15 pages.")
+
 
 
 
