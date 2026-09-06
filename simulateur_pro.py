@@ -23,51 +23,21 @@ APP_URL = st.secrets.get("APP_URL", "http://localhost:8501")
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
-# Initialisation des états de session
-if "paiement_reussi" not in st.session_state:
-    st.session_state.paiement_reussi = False
-if "verification_faite" not in st.session_state:
-    st.session_state.verification_faite = False
-
-st.title("🧠 Intelligence Artificielle & Expertise Patrimoniale")
-st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
-
-# --- ÉTAPE 1 : LA SIMULATION GRATUITE ---
-st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
-
-col_inputs, col_graph = st.columns(2)
-
-with col_inputs:
-    st.write("⚙️ Ajustez vos critères (le graphique s'actualise en direct) :")
-    age = st.number_input("Votre âge", min_value=18, max_value=100, value=35, step=1)
-    patrimoine_actuel = st.number_input("Patrimoine actuel (€)", min_value=0, value=50000, step=1000)
-    epargne_mensuelle = st.number_input("Épargne mensuelle (€)", min_value=0, value=300, step=50)
-    Rendement = st.slider("Hypothèse de rendement annuel (%)", 1.0, 10.0, 4.0)
-
-# Calculs automatiques des intérêts et de l'inflation
-annees_cumulees = np.arange(0, 21)
-ages_futurs = age + annees_cumulees
-
-r = Rendement / 100
-if r > 0:
-    capital_brut = patrimoine_actuel * ((1 + r) ** annees_cumulees) + (epargne_mensuelle * 12) * (((1 + r) ** annees_cumulees) - 1) / r
-else:
-    capital_brut = patrimoine_actuel + (epargne_mensuelle * 12) * annees_cumulees
-
-capital_reel_inflation = capital_brut / ((1 + 0.03) ** annees_cumulees)
-
-with col_graph:
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=ages_futurs, y=np.round(capital_brut, 2), mode='lines+markers', name='Capital Brut (Théorique)', line=dict(color='#004B87', width=3)))
-    fig.add_trace(go.Scatter(x=ages_futurs, y=np.round(capital_reel_inflation, 2), mode='lines+markers', name='Pouvoir d’Achat Réel (Inflation 3%)', line=dict(color='#D9534F', dash='dash')))
-    
-    fig.update_layout(
-        title=f"Projection de votre patrimoine de {age} ans à {age+20} ans",
-        xaxis_title="Votre âge au fil des années",
-        yaxis_title="Valeur du capital (€)",
-        legend=dict(yanchor="bottom", y=0.01, xanchor="left", x=0.01)
-    )
-    st.plotly_chart(fig, use_container_width=True)
+# --- FONCTION ISOLÉE POUR CRÉER LA SESSION STRIPE ---
+def generer_lien_stripe(u_age, u_pat):
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{"price": PRICE_ID, "quantity": 1}],
+            mode="payment",
+            success_url=f"{APP_URL}?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=APP_URL,
+            metadata={"age": str(u_age), "patrimoine": str(u_pat)}
+        )
+        return session.url
+    except Exception as e:
+        st.error(f"Erreur lors de la création de la session Stripe : {str(e)}")
+        return None
 
 # --- FONCTION DE GÉNÉRATION DU PDF (REPORTLAB) ---
 def build_15_page_pdf(user_age, user_pat, user_ep, user_rend):
@@ -116,6 +86,52 @@ def build_15_page_pdf(user_age, user_pat, user_ep, user_rend):
     doc.build(story)
     buffer.seek(0)
     return buffer
+
+# Initialisation des états de session
+if "paiement_reussi" not in st.session_state:
+    st.session_state.paiement_reussi = False
+if "verification_faite" not in st.session_state:
+    st.session_state.verification_faite = False
+
+st.title("🧠 Intelligence Artificielle & Expertise Patrimoniale")
+st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
+
+# --- ÉTAPE 1 : LA SIMULATION GRATUITE ---
+st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
+
+col_inputs, col_graph = st.columns(2)
+
+with col_inputs:
+    st.write("⚙️ Ajustez vos critères (le graphique s'actualise en direct) :")
+    age = st.number_input("Votre âge", min_value=18, max_value=100, value=35, step=1)
+    patrimoine_actuel = st.number_input("Patrimoine actuel (€)", min_value=0, value=50000, step=1000)
+    epargne_mensuelle = st.number_input("Épargne mensuelle (€)", min_value=0, value=300, step=50)
+    Rendement = st.slider("Hypothèse de rendement annuel (%)", 1.0, 10.0, 4.0)
+
+# Calculs automatiques des intérêts et de l'inflation
+annees_cumulees = np.arange(0, 21)
+ages_futurs = age + annees_cumulees
+
+r = Rendement / 100
+if r > 0:
+    capital_brut = patrimoine_actuel * ((1 + r) ** annees_cumulees) + (epargne_mensuelle * 12) * (((1 + r) ** annees_cumulees) - 1) / r
+else:
+    capital_brut = patrimoine_actuel + (epargne_mensuelle * 12) * annees_cumulees
+
+capital_reel_inflation = capital_brut / ((1 + 0.03) ** annees_cumulees)
+
+with col_graph:
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=ages_futurs, y=np.round(capital_brut, 2), mode='lines+markers', name='Capital Brut (Théorique)', line=dict(color='#004B87', width=3)))
+    fig.add_trace(go.Scatter(x=ages_futurs, y=np.round(capital_reel_inflation, 2), mode='lines+markers', name='Pouvoir d’Achat Réel (Inflation 3%)', line=dict(color='#D9534F', dash='dash')))
+    
+    fig.update_layout(
+        title=f"Projection de votre patrimoine de {age} ans à {age+20} ans",
+        xaxis_title="Votre âge au fil des années",
+        yaxis_title="Valeur du capital (€)",
+        legend=dict(yanchor="bottom", y=0.01, xanchor="left", x=0.01)
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 # --- ÉTAPE 2 : LOGIQUE DE PAIEMENT STRIPE & LIVRAISON ---
 st.markdown("---")
@@ -166,14 +182,4 @@ else:
             if st.button("🎯 Tester l'application (Mode Démo Gratuit)", use_container_width=True):
                 st.session_state.paiement_reussi = True
                 st.rerun()
-        else:
-            try:
-                checkout_session = stripe.checkout.Session.create(
-                    payment_method_types=["card"],
-                    line_items=[{"price": PRICE_ID, "quantity": 1}],
-                    mode="payment",
-                    success_url=f"{APP_URL}?session_id={{CHECKOUT_SESSION_ID}}",
-                    cancel_url=APP_URL,
-                    metadata={"age": str(age), "patrimoine": str(patrimoine_actuel)}
-                )
-                stripe_url = checkout_session.url
+
