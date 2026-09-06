@@ -177,4 +177,3 @@ else:
                     text-align: center;
                     padding: 14px 20px;
                     background-color: #635bff;
-
