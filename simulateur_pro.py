@@ -39,8 +39,6 @@ col_inputs, col_graph = st.columns(2)
 
 with col_inputs:
     st.write("⚙️ Ajustez vos critères (le graphique s'actualise en direct) :")
-    
-    # L'ajout de l'argument clé dans st.number_input force le rafraîchissement immédiat de Streamlit
     age = st.number_input("Votre âge", min_value=18, max_value=100, value=35, step=1)
     patrimoine_actuel = st.number_input("Patrimoine actuel (€)", min_value=0, value=50000, step=1000)
     epargne_mensuelle = st.number_input("Épargne mensuelle (€)", min_value=0, value=300, step=50)
@@ -48,7 +46,6 @@ with col_inputs:
 
 # Calculs automatiques des intérêts et de l'inflation
 annees_cumulees = np.arange(0, 21)
-# NOUVEAUTÉ : Création de l'axe des âges réels pour le client
 ages_futurs = age + annees_cumulees
 
 r = Rendement / 100
@@ -61,7 +58,6 @@ capital_reel_inflation = capital_brut / ((1 + 0.03) ** annees_cumulees)
 
 with col_graph:
     fig = go.Figure()
-    # On remplace l'axe X 'annees_cumulees' par 'ages_futurs'
     fig.add_trace(go.Scatter(x=ages_futurs, y=np.round(capital_brut, 2), mode='lines+markers', name='Capital Brut (Théorique)', line=dict(color='#004B87', width=3)))
     fig.add_trace(go.Scatter(x=ages_futurs, y=np.round(capital_reel_inflation, 2), mode='lines+markers', name='Pouvoir d’Achat Réel (Inflation 3%)', line=dict(color='#D9534F', dash='dash')))
     
@@ -178,3 +174,6 @@ else:
                     mode="payment",
                     success_url=f"{APP_URL}?session_id={{CHECKOUT_SESSION_ID}}",
                     cancel_url=APP_URL,
+                    metadata={"age": str(age), "patrimoine": str(patrimoine_actuel)}
+                )
+                stripe_url = checkout_session.url
