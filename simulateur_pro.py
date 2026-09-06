@@ -23,22 +23,6 @@ APP_URL = st.secrets.get("APP_URL", "http://localhost:8501")
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
-# --- FONCTION ISOLÉE POUR CRÉER LA SESSION STRIPE ---
-def generer_lien_stripe(u_age, u_pat):
-    try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[{"price": PRICE_ID, "quantity": 1}],
-            mode="payment",
-            success_url=f"{APP_URL}?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=APP_URL,
-            metadata={"age": str(u_age), "patrimoine": str(u_pat)}
-        )
-        return session.url
-    except Exception as e:
-        st.error(f"Erreur lors de la création de la session Stripe : {str(e)}")
-        return None
-
 # --- FONCTION DE GÉNÉRATION DU PDF (REPORTLAB) ---
 def build_15_page_pdf(user_age, user_pat, user_ep, user_rend):
     buffer = BytesIO()
@@ -125,18 +109,11 @@ with col_graph:
     fig.add_trace(go.Scatter(x=ages_futurs, y=np.round(capital_brut, 2), mode='lines+markers', name='Capital Brut (Théorique)', line=dict(color='#004B87', width=3)))
     fig.add_trace(go.Scatter(x=ages_futurs, y=np.round(capital_reel_inflation, 2), mode='lines+markers', name='Pouvoir d’Achat Réel (Inflation 3%)', line=dict(color='#D9534F', dash='dash')))
     
-    # CORRECTION DE LA POSITION DE LA LÉGENDE (Placée en haut à gauche pour éviter la superposition)
     fig.update_layout(
         title=f"Projection de votre patrimoine de {age} ans à {age+20} ans",
         xaxis_title="Votre âge au fil des années",
         yaxis_title="Valeur du capital (€)",
-        legend=dict(
-            yanchor="top",
-            y=0.99,
-            xanchor="left",
-            x=0.01,
-            bgcolor="rgba(255, 255, 255, 0.6)" # Fond légèrement transparent pour la boîte des légendes
-        )
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(255, 255, 255, 0.6)")
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -184,3 +161,19 @@ else:
     with col_action:
         st.warning("🎁 Tarif de lancement : 19,00 € TTC (au lieu de 49 €)")
         
+        # LOGIQUE REVISITÉE POUR EMPECHER LE BOUTON DE S'EFFACER OBLIGATOIREMENT
+        if not STRIPE_SECRET_KEY or not PRICE_ID:
+            st.info("ℹ️ Mode démo actif car vos clés Stripe ne sont pas détectées.")
+            if st.button("🎯 Accéder instantanément à l'Audit (Démo Gratuite)", use_container_width=True):
+                st.session_state.paiement_reussi = True
+                st.rerun()
+        else:
+            # Code exécuté en production avec Stripe
+            stripe_url = None
+            try:
+                checkout_session = stripe.checkout.Session.create(
+                    payment_method_types=["card"],
+                    line_items=[{"price": PRICE_ID, "quantity": 1}],
+                    mode="payment",
+                    success_url=f"{APP_URL}?session_id={{CHECKOUT_SESSION_ID}}",
+                    cancel_url=APP_URL,
