@@ -158,7 +158,6 @@ else:
                 st.session_state.paiement_reussi = True
                 st.rerun()
         else:
-            # Création immédiate du lien pour éviter les rechargements de boutons imbriqués
             try:
                 checkout_session = stripe.checkout.Session.create(
                     payment_method_types=["card"],
@@ -170,10 +169,8 @@ else:
                 )
                 stripe_url = checkout_session.url
                 
-                # Bouton cliquable direct avec design épuré
-                st.markdown(f"""
-                <a href="{stripe_url}" target="_self" style="
-                    display: block;
-                    text-align: center;
-                    padding: 14px 20px;
-                    background-color: #635bff;
+                # Lien direct sécurisé sans balise HTML complexe imbriquée
+                st.link_button("💳 Acheter mon Audit personnalisé pour 19€", stripe_url, use_container_width=True)
+                
+            except Exception as ex:
+                st.error(f"Erreur d'accès à Stripe. Vérifiez vos clés d'API : {str(ex)}")
