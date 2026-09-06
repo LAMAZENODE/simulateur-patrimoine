@@ -35,7 +35,8 @@ st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
 # --- ÉTAPE 1 : LA SIMULATION GRATUITE ---
 st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
 
-col_inputs, col_graph = st.columns()
+# CORRECTION DE LA LIGNE 38 : AJOUT DU PARAMÈTRE (2)
+col_inputs, col_graph = st.columns(2)
 
 with col_inputs:
     age = st.number_input("Votre âge", min_value=18, max_value=100, value=35)
@@ -169,7 +170,6 @@ else:
                 )
                 stripe_url = checkout_session.url
                 
-                # Lien direct sécurisé sans balise HTML complexe imbriquée
                 st.link_button("💳 Acheter mon Audit personnalisé pour 19€", stripe_url, use_container_width=True)
                 
             except Exception as ex:
