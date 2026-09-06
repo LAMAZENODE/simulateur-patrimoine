@@ -28,8 +28,6 @@ if "paiement_reussi" not in st.session_state:
     st.session_state.paiement_reussi = False
 if "verification_faite" not in st.session_state:
     st.session_state.verification_faite = False
-if "stripe_url" not in st.session_state:
-    st.session_state.stripe_url = None
 
 st.title("🧠 Intelligence Artificielle & Expertise Patrimoniale")
 st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
@@ -37,7 +35,7 @@ st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
 # --- ÉTAPE 1 : LA SIMULATION GRATUITE ---
 st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
 
-col_inputs, col_graph = st.columns([1, 2])
+col_inputs, col_graph = st.columns()
 
 with col_inputs:
     age = st.number_input("Votre âge", min_value=18, max_value=100, value=35)
@@ -74,10 +72,9 @@ def build_15_page_pdf(user_age, user_pat, user_ep, user_rend):
     
     story = []
     
-    # Structure des 15 pages de l'audit
     sections = [
         ("Page 1 : Page de Garde", "AUDIT PATRIMONIAL CERTIFIÉ IA\n\nPréparé à l'attention de notre client privilégié.\nDate d'analyse : " + datetime.now().strftime('%d/%m/%Y')),
-        ("Page 2 : Résumé Exécutif", "Cet audit passe en revue vos actifs actuels et segmente vos leviers de performance pour neutraliser l'effet de l'érosion monétaire."),
+        ("Page 2 : Résumé Exécutif", "Cet audit passe en revue vos actifs actifs et segmente vos leviers de performance pour neutraliser l'effet de l'érosion monétaire."),
         ("Page 3 : État des lieux de votre bilan", f"Analyse détaillée des capitaux initiaux enregistrés. Actif net de départ : {user_pat:,} €."),
         ("Page 4 : Analyse de la capitalisation brute", "Modélisation de vos projections de gains sous l'hypothèse d'une allocation à architecture ouverte."),
         ("Page 5 : L'impact mathématique de l'inflation", "Démonstration de la perte mécanique de pouvoir d'achat face à un glissement annuel des prix de l'ordre de 3%."),
@@ -161,19 +158,23 @@ else:
                 st.session_state.paiement_reussi = True
                 st.rerun()
         else:
-            if st.button("💳 Acheter mon Audit personnalisé pour 19€", use_container_width=True):
-                try:
-                    checkout_session = stripe.checkout.Session.create(
-                        payment_method_types=["card"],
-                        line_items=[{"price": PRICE_ID, "quantity": 1}],
-                        mode="payment",
-                        success_url=f"{APP_URL}?session_id={{CHECKOUT_SESSION_ID}}",
-                        cancel_url=APP_URL,
-                        metadata={"age": str(age), "patrimoine": str(patrimoine_actuel)},
-                    )
-                    st.session_state.stripe_url = checkout_session.url
-                    st.rerun()
-                except Exception as ex:
-                    st.error(f"Erreur Stripe : {str(ex)}")
-            
+            # Création immédiate du lien pour éviter les rechargements de boutons imbriqués
+            try:
+                checkout_session = stripe.checkout.Session.create(
+                    payment_method_types=["card"],
+                    line_items=[{"price": PRICE_ID, "quantity": 1}],
+                    mode="payment",
+                    success_url=f"{APP_URL}?session_id={{CHECKOUT_SESSION_ID}}",
+                    cancel_url=APP_URL,
+                    metadata={"age": str(age), "patrimoine": str(patrimoine_actuel)},
+                )
+                stripe_url = checkout_session.url
+                
+                # Bouton cliquable direct avec design épuré
+                st.markdown(f"""
+                <a href="{stripe_url}" target="_self" style="
+                    display: block;
+                    text-align: center;
+                    padding: 14px 20px;
+                    background-color: #635bff;
 
