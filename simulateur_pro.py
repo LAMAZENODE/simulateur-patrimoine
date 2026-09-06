@@ -35,30 +35,42 @@ st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
 # --- ÉTAPE 1 : LA SIMULATION GRATUITE ---
 st.markdown("### 📊 Étape 1 : Votre simulation immédiate et gratuite")
 
-# CORRECTION DE LA LIGNE 38 : AJOUT DU PARAMÈTRE (2)
 col_inputs, col_graph = st.columns(2)
 
 with col_inputs:
-    age = st.number_input("Votre âge", min_value=18, max_value=100, value=35)
-    patrimoine_actuel = st.number_input("Patrimoine actuel (€)", min_value=0, value=50000)
-    epargne_mensuelle = st.number_input("Épargne mensuelle (€)", min_value=0, value=300)
+    st.write("⚙️ Ajustez vos critères (le graphique s'actualise en direct) :")
+    
+    # L'ajout de l'argument clé dans st.number_input force le rafraîchissement immédiat de Streamlit
+    age = st.number_input("Votre âge", min_value=18, max_value=100, value=35, step=1)
+    patrimoine_actuel = st.number_input("Patrimoine actuel (€)", min_value=0, value=50000, step=1000)
+    epargne_mensuelle = st.number_input("Épargne mensuelle (€)", min_value=0, value=300, step=50)
     Rendement = st.slider("Hypothèse de rendement annuel (%)", 1.0, 10.0, 4.0)
 
 # Calculs automatiques des intérêts et de l'inflation
-annees = np.arange(0, 21)
+annees_cumulees = np.arange(0, 21)
+# NOUVEAUTÉ : Création de l'axe des âges réels pour le client
+ages_futurs = age + annees_cumulees
+
 r = Rendement / 100
 if r > 0:
-    capital_brut = patrimoine_actuel * ((1 + r) ** annees) + (epargne_mensuelle * 12) * (((1 + r) ** annees) - 1) / r
+    capital_brut = patrimoine_actuel * ((1 + r) ** annees_cumulees) + (epargne_mensuelle * 12) * (((1 + r) ** annees_cumulees) - 1) / r
 else:
-    capital_brut = patrimoine_actuel + (epargne_mensuelle * 12) * annees
+    capital_brut = patrimoine_actuel + (epargne_mensuelle * 12) * annees_cumulees
 
-capital_reel_inflation = capital_brut / ((1 + 0.03) ** annees)
+capital_reel_inflation = capital_brut / ((1 + 0.03) ** annees_cumulees)
 
 with col_graph:
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=annees, y=np.round(capital_brut, 2), mode='lines+markers', name='Capital Brut (Théorique)', line=dict(color='#004B87', width=3)))
-    fig.add_trace(go.Scatter(x=annees, y=np.round(capital_reel_inflation, 2), mode='lines+markers', name='Pouvoir d’Achat Réel (Inflation 3%)', line=dict(color='#D9534F', dash='dash')))
-    fig.update_layout(title="L'effet invisible de l'inflation sur 20 ans", xaxis_title="Années", yaxis_title="Valeur (€)")
+    # On remplace l'axe X 'annees_cumulees' par 'ages_futurs'
+    fig.add_trace(go.Scatter(x=ages_futurs, y=np.round(capital_brut, 2), mode='lines+markers', name='Capital Brut (Théorique)', line=dict(color='#004B87', width=3)))
+    fig.add_trace(go.Scatter(x=ages_futurs, y=np.round(capital_reel_inflation, 2), mode='lines+markers', name='Pouvoir d’Achat Réel (Inflation 3%)', line=dict(color='#D9534F', dash='dash')))
+    
+    fig.update_layout(
+        title=f"Projection de votre patrimoine de {age} ans à {age+20} ans",
+        xaxis_title="Votre âge au fil des années",
+        yaxis_title="Valeur du capital (€)",
+        legend=dict(yanchor="bottom", y=0.01, xanchor="left", x=0.01)
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 # --- FONCTION DE GÉNÉRATION DU PDF (REPORTLAB) ---
@@ -166,11 +178,3 @@ else:
                     mode="payment",
                     success_url=f"{APP_URL}?session_id={{CHECKOUT_SESSION_ID}}",
                     cancel_url=APP_URL,
-                    metadata={"age": str(age), "patrimoine": str(patrimoine_actuel)},
-                )
-                stripe_url = checkout_session.url
-                
-                st.link_button("💳 Acheter mon Audit personnalisé pour 19€", stripe_url, use_container_width=True)
-                
-            except Exception as ex:
-                st.error(f"Erreur d'accès à Stripe. Vérifiez vos clés d'API : {str(ex)}")
