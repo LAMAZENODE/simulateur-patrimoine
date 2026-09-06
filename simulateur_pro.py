@@ -15,7 +15,7 @@ st.set_page_config(page_title="IA & Expertise Patrimoniale", layout="wide")
 
 # --- PARAMÈTRE À REMPLIR ---
 # Collez ici votre vrai lien de paiement Stripe créé sur votre tableau de bord
-LIEN_PAIEMENT_STRIPE = "https://stripe.com" 
+LIEN_PAIEMENT_STRIPE = "https://buy.stripe.com/dRm3cu0zBgqm4V66ta8g003" 
 
 # Initialisation des états de session
 if "paiement_reussi" not in st.session_state:
