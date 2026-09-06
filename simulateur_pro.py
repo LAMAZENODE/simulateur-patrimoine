@@ -14,12 +14,14 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
 st.set_page_config(page_title="IA & Expertise Patrimoniale", layout="wide")
 
 # --- PARAMÈTRE À REMPLIR ---
-# Allez sur Stripe -> Liens de paiement -> Créez un lien à 19€ et collez-le ici :
-LIEN_PAIEMENT_STRIPE = "https://buy.stripe.com/dRm3cu0zBgqm4V66ta8g003" 
+# Collez ici votre vrai lien de paiement Stripe créé sur votre tableau de bord
+LIEN_PAIEMENT_STRIPE = "https://stripe.com" 
 
 # Initialisation des états de session
 if "paiement_reussi" not in st.session_state:
     st.session_state.paiement_reussi = False
+if "apercu_debloque" not in st.session_state:
+    st.session_state.apercu_debloque = False
 
 st.title("🧠 Intelligence Artificielle & Expertise Patrimoniale")
 st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
@@ -109,17 +111,15 @@ def build_15_page_pdf(user_age, user_pat, user_ep, user_rend):
     buffer.seek(0)
     return buffer
 
-# --- ÉTAPE 2 : LOGIQUE DE LIVRAISON DIRECTE ---
+# --- ÉTAPE 2 : BLOC DE VENTE & TÉLÉCHARGEMENT ---
 st.markdown("---")
 
+# Si le vrai paiement a été effectué
 if st.session_state.paiement_reussi:
-    st.success("🎉 Accès premium déverrouillé ! Votre Audit de 15 pages est disponible.")
-    st.markdown("### 🔓 Étape 2 : Téléchargez votre document d'ingénierie patrimoniale")
-    
+    st.success("🎉 Merci pour votre achat ! Votre Audit Certifié de 15 pages est entièrement disponible ci-dessous.")
     pdf_data = build_15_page_pdf(age, patrimoine_actuel, epargne_mensuelle, Rendement)
-    
     st.download_button(
-        label="📥 Télécharger votre Audit Patrimonial Certifié (15 Pages - PDF)",
+        label="📥 Télécharger votre Audit Patrimonial Complet (15 Pages - PDF)",
         data=pdf_data,
         file_name=f"Audit_Patrimoine_IA_{datetime.now().strftime('%Y%m%d')}.pdf",
         mime="application/pdf",
@@ -141,11 +141,24 @@ else:
     with col_action:
         st.warning("🎁 Tarif de lancement : 19,00 € TTC (au lieu de 49 €)")
         
-        # Bouton Stripe officiel ultra-fiable et sans risque d'erreur de syntaxe
+        # Le bouton d'achat Stripe RESTE TOUJOURS visible ici pour le client
         st.link_button("💳 Acheter mon Audit personnalisé pour 19€", LIEN_PAIEMENT_STRIPE, use_container_width=True)
         
-        st.write("")
-        # Bouton secret pour que vous puissiez tester le téléchargement du PDF gratuitement
-        if st.button("🎯 Mode Test : Débloquer le bouton de téléchargement gratuitement", use_container_width=True):
-            st.session_state.paiement_reussi = True
-            st.rerun()
+        st.write("---")
+        st.write("🔬 *Zone de test technique :*")
+        
+        # Bouton d'aperçu gratuit (il débloque le PDF juste en dessous sans faire disparaître le bouton Acheter)
+        if st.button("🎯 Découvrir un aperçu de la structure du PDF (Gratuit)", use_container_width=True):
+            st.session_state.apercu_debloque = True
+            
+        if st.session_state.apercu_debloque:
+            st.info("ℹ️ Structure du document débloquée. Vous pouvez télécharger l'exemplaire de démonstration ci-dessous pour voir la mise en page.")
+            pdf_preview = build_15_page_pdf(age, patrimoine_actuel, epargne_mensuelle, Rendement)
+            st.download_button(
+                label="📥 Télécharger l'aperçu de la structure (PDF démo)",
+                data=pdf_preview,
+                file_name="Apercu_Structure_Audit.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+
