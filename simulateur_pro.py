@@ -76,8 +76,10 @@ def build_15_page_pdf(user_age, user_pat, user_ep, user_rend):
     story = []
     
     sections = [
+        
         ("Page 1 : Page de Garde", "AUDIT PATRIMONIAL CERTIFIÉ IA\n\nPréparé à l'attention de notre client privilégié.\nDate d'analyse : " + datetime.now().strftime('%d/%m/%Y')),
-        ("Page 2 : Résumé Exécutif", "Cet audit passe en revue vos actifs actifs et segmente vos leviers de performance pour neutraliser l'effet de l'érosion monétaire."),
+        ("Page 2 : Résumé Exécutif", "Cet audit passe en revue vos actifs et segmente vos leviers de performance pour neutraliser l'effet de l'érosion monétaire."),
+
         ("Page 3 : État des lieux de votre bilan", f"Analyse détaillée des capitaux initiaux enregistrés. Actif net de départ : {user_pat:,} €."),
         ("Page 4 : Analyse de la capitalisation brute", "Modélisation de vos projections de gains sous l'hypothèse d'une allocation à architecture ouverte."),
         ("Page 5 : L'impact mathématique de l'inflation", "Démonstration de la perte mécanique de pouvoir d'achat face à un glissement annuel des prix de l'ordre de 3%."),
