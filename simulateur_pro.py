@@ -23,7 +23,7 @@ if "paiement_reussi" not in st.session_state:
 if "apercu_debloque" not in st.session_state:
     st.session_state.apercu_debloque = False
 
-st.title("🧠 Intelligence Artificielle & Expertise Patrimoniale")
+st.title("🧠 Expertise Patrimoniale")
 st.subheader("Optimisez votre patrimoine et projetez votre avenir sur 20 ans")
 
 # --- ÉTAPE 1 : LA SIMULATION GRATUITE ---
